@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useLayoutEngine } from '@/hooks/useLayoutEngine'
+import { useLayoutEngine } from '@/hooks'
 
 describe('useLayoutEngine', () => {
   it('returns single layout for 1 candidate', () => {
