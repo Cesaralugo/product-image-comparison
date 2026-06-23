@@ -1,0 +1,78 @@
+.review-controls {
+  padding: calc(var(--spacing-unit) * 2);
+  background-color: var(--surface-color);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+}
+
+.notes-section {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 0.5);
+}
+
+.notes-section label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.notes-section textarea {
+  padding: var(--spacing-unit);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.controls-summary {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--spacing-unit);
+  background-color: var(--background-color);
+  border-radius: var(--border-radius);
+  font-size: 14px;
+}
+
+.selected-count {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.controls-buttons {
+  display: flex;
+  gap: var(--spacing-unit);
+  justify-content: flex-end;
+}
+
+.btn-skip,
+.btn-submit {
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-duration);
+}
+
+.btn-skip {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-skip:hover {
+  background-color: var(--secondary-color);
+}
+
+.btn-submit {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.btn-submit:hover {
+  opacity: 0.9;
+}

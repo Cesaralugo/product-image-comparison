@@ -1,0 +1,60 @@
+.product-metadata {
+  padding: calc(var(--spacing-unit) * 2);
+  background-color: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.metadata-section h2 {
+  font-size: 18px;
+  margin-bottom: var(--spacing-unit);
+  color: var(--text-primary);
+}
+
+.metadata-item {
+  margin-bottom: var(--spacing-unit);
+  display: flex;
+  gap: calc(var(--spacing-unit) * 2);
+}
+
+.metadata-item label {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 120px;
+}
+
+.reference-value {
+  font-family: 'Courier New', monospace;
+  background-color: var(--background-color);
+  padding: var(--spacing-unit);
+  border-radius: var(--border-radius);
+  color: var(--primary-color);
+}
+
+.description-value {
+  color: var(--text-secondary);
+}
+
+.metadata-table {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 0.5);
+  background-color: var(--background-color);
+  padding: var(--spacing-unit);
+  border-radius: var(--border-radius);
+}
+
+.metadata-row {
+  display: flex;
+  gap: var(--spacing-unit);
+  font-size: 14px;
+}
+
+.metadata-key {
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 100px;
+}
+
+.metadata-value {
+  color: var(--text-secondary);
+}

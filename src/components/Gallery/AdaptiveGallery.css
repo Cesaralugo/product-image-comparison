@@ -1,0 +1,115 @@
+.adaptive-gallery {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+  padding: calc(var(--spacing-unit) * 2);
+}
+
+.gallery-content {
+  display: grid;
+  gap: var(--spacing-unit);
+  flex: 1;
+}
+
+.gallery-single .gallery-content {
+  grid-template-columns: 1fr;
+}
+
+.gallery-grid .gallery-content {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.gallery-thumbnail-strip .gallery-content {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.gallery-paginated .gallery-content {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.gallery-masonry .gallery-content {
+  columns: auto 200px;
+  gap: var(--spacing-unit);
+}
+
+.gallery-item {
+  position: relative;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  transition: all var(--transition-duration);
+  aspect-ratio: 1;
+  background-color: var(--surface-color);
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gallery-item:hover {
+  border-color: var(--primary-color);
+  transform: scale(1.02);
+  box-shadow: var(--shadow-md);
+}
+
+.gallery-item.selected {
+  border-color: var(--success-color);
+  box-shadow: 0 0 0 3px var(--success-color);
+}
+
+.gallery-item.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: var(--success-color);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-unit);
+  padding: calc(var(--spacing-unit) * 1.5);
+  border-top: 1px solid var(--border-color);
+}
+
+.pagination button {
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: opacity var(--transition-duration);
+}
+
+.pagination button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  font-size: 14px;
+  color: var(--text-secondary);
+}

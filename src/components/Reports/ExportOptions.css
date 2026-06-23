@@ -1,0 +1,44 @@
+.export-options {
+  padding: calc(var(--spacing-unit) * 2);
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius);
+}
+
+.export-options h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-unit);
+  color: var(--text-primary);
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+}
+
+.export-btn {
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background-color: var(--background-color);
+  cursor: pointer;
+  transition: all var(--transition-duration);
+  font-weight: 500;
+}
+
+.export-btn:hover {
+  background-color: var(--surface-color);
+  border-color: var(--primary-color);
+}
+
+.export-btn.pdf {
+  color: #d32f2f;
+}
+
+.export-btn.csv {
+  color: #388e3c;
+}
+
+.export-btn.json {
+  color: #1976d2;
+}
