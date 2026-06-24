@@ -1,25 +1,30 @@
-import { useEffect, useState } from 'react'
+// src/hooks/useProductData.ts
+import { useState } from 'react'
 import type { Product } from '@/types'
 import { loadProductsFromCSV } from '@/services/api'
 
 export const useProductData = () => {
   const [products, setProducts] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadProducts = async (filePath: string) => {
-    setIsLoading(true)
+    setLoading(true)
     setError(null)
     try {
       const result = await loadProductsFromCSV(filePath)
-      // Process result and set products
-      setProducts([])
+      if (Array.isArray(result)) {
+        setProducts(result as Product[])
+      }
+      return result
     } catch (err) {
-      setError((err as Error).message)
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load products'
+      setError(errorMsg)
+      throw err
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  return { products, isLoading, error, loadProducts }
+  return { products, loading, error, loadProducts }
 }

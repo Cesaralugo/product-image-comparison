@@ -4,10 +4,10 @@ export interface ImageCandidate {
   filename: string
   aspectRatio: number
   size: number
-  thumbnailPath?: string
-  format: string
   width: number
   height: number
+  format?: string
+  thumbnailPath?: string
 }
 
 export interface ImageMetadata {

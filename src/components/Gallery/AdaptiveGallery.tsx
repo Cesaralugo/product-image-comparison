@@ -14,8 +14,8 @@ const AdaptiveGallery: React.FC<AdaptiveGalleryProps> = ({
   candidates,
   selectedImages,
   onSelectImage,
-  viewportWidth,
-  viewportHeight,
+  viewportWidth: _viewportWidth,
+  viewportHeight: _viewportHeight,
 }) => {
   const [currentPage, setCurrentPage] = useState(0)
 

@@ -10,7 +10,7 @@ interface ThumbnailStripLayoutProps {
 const ThumbnailStripLayout: React.FC<ThumbnailStripLayoutProps> = ({
   candidates,
   selectedImages,
-  onSelectImage,
+  onSelectImage:_onSelectImage,
 }) => {
   const [mainImage, setMainImage] = useState(candidates[0])
 

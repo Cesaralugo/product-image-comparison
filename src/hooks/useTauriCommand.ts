@@ -1,32 +1,32 @@
-import { useState, useCallback } from 'react'
-import { invoke } from '@tauri-apps/api/tauri'
+// src/hooks/useTauriCommand.ts
+import { invoke, type InvokeArgs } from '@tauri-apps/api/core'
+import { useState } from 'react'
 
-export const useTauriCommand = <T, R>(
+export const useTauriCommand = <T, P extends InvokeArgs | undefined = undefined>(
   command: string,
-  args?: T
+  options?: { onSuccess?: (data: T) => void; onError?: (error: string) => void }
 ) => {
-  const [data, setData] = useState<R | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<T | null>(null)
 
-  const execute = useCallback(
-    async (newArgs?: T) => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const result = await invoke<R>(command, newArgs || args)
-        setData(result)
-        return result
-      } catch (err) {
-        const errorMsg = (err as Error).message
-        setError(errorMsg)
-        throw err
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [command, args]
-  )
+  const execute = async (params?: P) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await invoke<T>(command, params)
+      setData(result)
+      options?.onSuccess?.(result)
+      return result
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred'
+      setError(errorMsg)
+      options?.onError?.(errorMsg)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  return { data, isLoading, error, execute }
+  return { execute, loading, error, data }
 }

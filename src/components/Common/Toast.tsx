@@ -1,8 +1,10 @@
+// src/components/Common/Toast.tsx
+import React, { useEffect } from 'react'  // Add this line
 import './Toast.css'
 
 interface ToastProps {
   message: string
-  type?: 'info' | 'success' | 'warning' | 'error'
+  type?: 'success' | 'error' | 'info' | 'warning'
   duration?: number
   onClose: () => void
 }
@@ -13,15 +15,20 @@ const Toast: React.FC<ToastProps> = ({
   duration = 3000,
   onClose,
 }) => {
-  React.useEffect(() => {
-    const timer = setTimeout(onClose, duration)
+  useEffect(() => {  // Now React is imported
+    const timer = setTimeout(() => {
+      onClose()
+    }, duration)
+
     return () => clearTimeout(timer)
   }, [duration, onClose])
 
   return (
     <div className={`toast toast-${type}`}>
-      <span>{message}</span>
-      <button onClick={onClose}>✕</button>
+      <span className="toast-message">{message}</span>
+      <button className="toast-close" onClick={onClose}>
+        ×
+      </button>
     </div>
   )
 }

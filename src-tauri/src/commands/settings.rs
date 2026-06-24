@@ -1,20 +1,16 @@
 // src/commands/settings.rs
 use crate::models::settings::AppSettings;
 use crate::services::database::Database;
+use crate::config;
 use serde_json::json;
-use std::sync::Mutex;
 use tauri::State;
-
-// Database connection state
-pub struct DbState {
-    pub conn: Mutex<rusqlite::Connection>,
-}
+use crate::AppState;
 
 #[tauri::command]
 pub async fn get_settings(
-    state: State<'_, DbState>,
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.conn.lock()
+    let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
     let settings = Database::get_settings(&conn)?;
@@ -28,22 +24,18 @@ pub async fn get_settings(
 #[tauri::command]
 pub async fn update_settings(
     settings: serde_json::Value,
-    state: State<'_, DbState>,
+    state: State<'_, AppState>,  // Use AppState consistently
 ) -> Result<serde_json::Value, String> {
-    // Parse and validate the settings
     let new_settings: AppSettings = serde_json::from_value(settings)
         .map_err(|e| format!("Invalid settings payload: {}", e))?;
 
-    // Validate settings values
     validate_settings(&new_settings)?;
 
-    let conn = state.conn.lock()
+    let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
-    // Update settings in database
     Database::update_settings(&conn, &new_settings)?;
 
-    // Apply any runtime changes (like thumbnail size)
     apply_runtime_settings(&new_settings)?;
 
     Ok(json!({
@@ -55,10 +47,10 @@ pub async fn update_settings(
 
 #[tauri::command]
 pub async fn reset_settings(
-    state: State<'_, DbState>,
+    state: State<'_, AppState>,  // Use AppState
 ) -> Result<serde_json::Value, String> {
     let default_settings = AppSettings::default();
-    let conn = state.conn.lock()
+    let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
     Database::update_settings(&conn, &default_settings)?;
@@ -73,9 +65,9 @@ pub async fn reset_settings(
 #[tauri::command]
 pub async fn get_setting(
     key: String,
-    state: State<'_, DbState>,
+    state: State<'_, AppState>,  // Use AppState
 ) -> Result<serde_json::Value, String> {
-    let conn = state.conn.lock()
+    let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
     let value = Database::get_setting_value::<serde_json::Value>(&conn, &key)?;
@@ -91,15 +83,15 @@ pub async fn get_setting(
 pub async fn update_setting(
     key: String,
     value: serde_json::Value,
-    state: State<'_, DbState>,
+    state: State<'_, AppState>,  // Use AppState
 ) -> Result<serde_json::Value, String> {
-    let conn = state.conn.lock()
+    let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
-    // Get current settings
     let mut settings = Database::get_settings(&conn)?;
 
-    // Update specific setting - clone value for each use
+    let mut thumbnail_size: Option<u32> = None;  // Store for later use
+
     match key.as_str() {
         "default_strategy" => {
             let strategy = serde_json::from_value(value.clone())
@@ -123,8 +115,7 @@ pub async fn update_setting(
                 return Err("Thumbnail size must be between 50 and 500".to_string());
             }
             settings.ui.thumbnail_size = size;
-            // Update runtime thumbnail size
-            crate::config::set_thumbnail_size(size);
+            thumbnail_size = Some(size);  // Store for later
         }
         "grid_columns" => {
             let columns = serde_json::from_value(value.clone())
@@ -162,15 +153,19 @@ pub async fn update_setting(
         }
     }
 
-    // Validate and save
     validate_settings(&settings)?;
     Database::update_settings(&conn, &settings)?;
+
+    // Apply thumbnail size if it was updated
+    if let Some(size) = thumbnail_size {
+        config::set_thumbnail_size(size);
+    }
 
     Ok(json!({
         "status": "success",
         "message": format!("Setting '{}' updated", key),
         "key": key,
-        "value": value // Use original value (not moved)
+        "value": value
     }))
 }
 
@@ -234,11 +229,7 @@ fn validate_settings(settings: &AppSettings) -> Result<(), String> {
 
 /// Apply settings that affect runtime behavior
 fn apply_runtime_settings(settings: &AppSettings) -> Result<(), String> {
-    // Update thumbnail size for image processing
-    crate::config::set_thumbnail_size(settings.ui.thumbnail_size);
-
-    // Update cache directory if needed
-    crate::config::set_cache_dir(settings.storage.images_path.clone());
-
+    config::set_thumbnail_size(settings.ui.thumbnail_size);
+    config::set_cache_dir(settings.storage.images_path.clone());
     Ok(())
 }

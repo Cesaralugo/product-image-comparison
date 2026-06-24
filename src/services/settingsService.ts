@@ -1,5 +1,5 @@
 // src/services/settingsService.ts
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 
 export interface ImageDiscoverySettings {
   defaultStrategy: string

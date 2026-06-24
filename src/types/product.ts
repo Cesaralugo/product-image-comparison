@@ -2,7 +2,7 @@ export interface Product {
   id: string
   reference: string
   description: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown> | null
   status?: 'pending' | 'reviewed' | 'completed'
   reviewedAt?: string
 }

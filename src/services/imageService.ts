@@ -1,7 +1,7 @@
-import { invoke } from '@tauri-apps/api/tauri'
-import { readFile, writeFile, exists, mkdir } from '@tauri-apps/api/fs'
-import { appDir, join } from '@tauri-apps/api/path'
-import { convertFileSrc } from '@tauri-apps/api/tauri'
+import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import { readFile, writeFile, exists, mkdir } from '@tauri-apps/plugin-fs'
+import { appDataDir, join } from '@tauri-apps/api/path'
+import type { ImageCandidate } from '@/types/image'
 
 export interface ImageDimensions {
   width: number
@@ -18,14 +18,13 @@ export interface ImageInfo {
   aspectRatio: number
 }
 
-export interface ImageCandidate {
-  id: string
-  path: string
+export interface UploadMetadata {
+  original_path: string
+  uploaded_at: string
+  product_reference: string
   filename: string
-  aspectRatio: number
+  thumbnail: string
   size: number
-  width: number
-  height: number
 }
 
 export interface UploadResult {
@@ -33,20 +32,52 @@ export interface UploadResult {
   message: string
   uploadedPath: string
   thumbnailPath: string
-  metadata: any
+  metadata: UploadMetadata
+}
+
+export interface CacheStats {
+  file_count: number
+  total_size_bytes: number
+  total_size_mb: number
+  cache_dir: string
 }
 
 export const imageService = {
-  /**
-   * Generate a thumbnail from an image
-   * Uses backend to generate and cache thumbnail
-   */
-  generateThumbnail: async (imagePath: string, size: number = 200): Promise<string> => {
+  generateThumbnail: async (imagePath: string, _size: number = 200): Promise<string> => {
     try {
       const result = await invoke<{ thumbnail_path: string }>('get_thumbnail', { imagePath })
       return convertFileSrc(result.thumbnail_path)
     } catch (error) {
       console.error('Failed to generate thumbnail:', error)
+      throw error
+    }
+  },
+
+  cacheImage: async (imageId: string, imagePath: string): Promise<string> => {
+    try {
+      const appDataDirPath = await appDataDir()  // Changed from appDir()
+      const cacheDir = await join(appDataDirPath, 'cache', 'images')
+
+      // Check if directory exists using plugin-fs
+      const cacheDirExists = await exists(cacheDir)
+      if (!cacheDirExists) {
+        await mkdir(cacheDir, { recursive: true })
+      }
+
+      const cachePath = await join(cacheDir, `${imageId}.cache`)
+
+      const cachedExists = await exists(cachePath)
+      if (cachedExists) {
+        return cachePath
+      }
+
+      // Read and cache the image
+      const imageData = await readFile(imagePath)
+      await writeFile(cachePath, imageData)
+
+      return cachePath
+    } catch (error) {
+      console.error('Failed to cache image:', error)
       throw error
     }
   },
@@ -122,38 +153,6 @@ export const imageService = {
     }
   },
 
-  /**
-   * Cache image locally for offline access
-   */
-  cacheImage: async (imageId: string, imagePath: string): Promise<string> => {
-    try {
-      const appDirPath = await appDir()
-      const cacheDir = await join(appDirPath, 'cache', 'images')
-
-      // Ensure cache directory exists
-      const cacheDirExists = await exists(cacheDir)
-      if (!cacheDirExists) {
-        await mkdir(cacheDir, { recursive: true })
-      }
-
-      const cachePath = await join(cacheDir, `${imageId}.cache`)
-
-      // Check if already cached
-      const cachedExists = await exists(cachePath)
-      if (cachedExists) {
-        return cachePath
-      }
-
-      // Read and cache the image
-      const imageData = await readFile(imagePath)
-      await writeFile(cachePath, imageData)
-
-      return cachePath
-    } catch (error) {
-      console.error('Failed to cache image:', error)
-      throw error
-    }
-  },
 
   /**
    * Discover images for a product using various strategies
@@ -240,9 +239,9 @@ export const imageService = {
   /**
    * Get cache statistics
    */
-  getCacheStats: async (): Promise<any> => {
+  getCacheStats: async (): Promise<CacheStats> => {
     try {
-      const result = await invoke<{ stats: any }>('get_cache_stats')
+      const result = await invoke<{ stats: CacheStats }>('get_cache_stats')
       return result.stats
     } catch (error) {
       console.error('Failed to get cache stats:', error)

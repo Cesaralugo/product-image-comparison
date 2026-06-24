@@ -1,35 +1,74 @@
-import { useState } from 'react'
+// src/components/Settings/SettingsPanel.tsx
+import React, { useState } from 'react'
 import ImageDiscoverySettings from './ImageDiscoverySettings'
 import PerformanceSettings from './PerformanceSettings'
 import StorageSettings from './StorageSettings'
-import './SettingsPanel.css'
+import type { AppSettings, DiscoverySettings, PerformanceSettings as PerfSettings, StorageSettings as StorSettings } from '@/types/settings'
 
 interface SettingsPanelProps {
-  onSave: (settings: any) => void
+  settings?: AppSettings
+  onUpdate?: (settings: AppSettings) => void
+  onSave?: (settings: AppSettings) => void
 }
 
-const SettingsPanel: React.FC<SettingsPanelProps> = ({ onSave }) => {
-  const [activeTab, setActiveTab] = useState<'discovery' | 'performance' | 'storage'>(
-    'discovery'
-  )
+const SettingsPanel: React.FC<SettingsPanelProps> = ({
+  onSave,
+  onUpdate,
+  settings
+}) => {
+  const [activeTab, setActiveTab] = useState<'discovery' | 'performance' | 'storage'>('discovery')
+
+  const handleSave = () => {
+    if (onSave && settings) {
+      onSave(settings)
+    }
+  }
+
+  // Helper to update specific sections while preserving the rest
+  const updateDiscovery = (discoverySettings: DiscoverySettings) => {
+    if (onUpdate && settings) {
+      onUpdate({
+        ...settings,
+        discovery: discoverySettings
+      })
+    }
+  }
+
+  const updatePerformance = (performanceSettings: PerfSettings) => {
+    if (onUpdate && settings) {
+      onUpdate({
+        ...settings,
+        performance: performanceSettings
+      })
+    }
+  }
+
+  const updateStorage = (storageSettings: StorSettings) => {
+    if (onUpdate && settings) {
+      onUpdate({
+        ...settings,
+        storage: storageSettings
+      })
+    }
+  }
 
   return (
     <div className="settings-panel">
       <div className="settings-tabs">
         <button
-          className={`tab ${activeTab === 'discovery' ? 'active' : ''}`}
+          className={activeTab === 'discovery' ? 'active' : ''}
           onClick={() => setActiveTab('discovery')}
         >
-          Image Discovery
+          Discovery
         </button>
         <button
-          className={`tab ${activeTab === 'performance' ? 'active' : ''}`}
+          className={activeTab === 'performance' ? 'active' : ''}
           onClick={() => setActiveTab('performance')}
         >
           Performance
         </button>
         <button
-          className={`tab ${activeTab === 'storage' ? 'active' : ''}`}
+          className={activeTab === 'storage' ? 'active' : ''}
           onClick={() => setActiveTab('storage')}
         >
           Storage
@@ -37,9 +76,27 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ onSave }) => {
       </div>
 
       <div className="settings-content">
-        {activeTab === 'discovery' && <ImageDiscoverySettings onSave={onSave} />}
-        {activeTab === 'performance' && <PerformanceSettings onSave={onSave} />}
-        {activeTab === 'storage' && <StorageSettings onSave={onSave} />}
+        {activeTab === 'discovery' && (
+          <ImageDiscoverySettings
+            settings={settings?.discovery}
+            onUpdate={updateDiscovery}
+            onSave={handleSave}
+          />
+        )}
+        {activeTab === 'performance' && (
+          <PerformanceSettings
+            settings={settings?.performance}
+            onUpdate={updatePerformance}
+            onSave={handleSave}
+          />
+        )}
+        {activeTab === 'storage' && (
+          <StorageSettings
+            settings={settings?.storage}
+            onUpdate={updateStorage}
+            onSave={handleSave}
+          />
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,10 @@
+// src-tauri/src/services/database.rs
 use crate::models::Product;
 use crate::models::review::{ReviewResult, ReviewSession};
-use crate::config;
+use crate::config;  // Add this import
 use rusqlite::{params, Connection};
+use tauri::State;
+use crate::AppState;  // Add this import
 
 pub struct Database;
 
@@ -119,7 +122,7 @@ impl Database {
                         product.reference, e
                     )
                 })?),
-                None => None,
+                _none => None,
             };
 
             conn.execute(
@@ -434,4 +437,10 @@ impl Database {
             _ => Ok(None),
         }
     }
+}
+
+// Helper to get connection from state
+pub fn get_connection<'a>(state: &'a State<AppState>) -> Result<std::sync::MutexGuard<'a, Connection>, String> {
+    state.db_connection.lock()
+        .map_err(|e| format!("Failed to acquire database lock: {}", e))
 }

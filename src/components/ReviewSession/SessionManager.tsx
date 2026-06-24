@@ -1,13 +1,18 @@
-import { useState, useEffect } from 'react'
+// src/components/ReviewSession/SessionManager.tsx
+import React, { useState, useEffect } from 'react'
 import type { ReviewSession } from '@/types'
 
 interface SessionManagerProps {
-  session: ReviewSession | null
-  onSessionChange: (session: ReviewSession) => void
+  session?: ReviewSession
+  onSessionChange?: (session: ReviewSession) => void
 }
 
-const SessionManager: React.FC<SessionManagerProps> = ({ session, onSessionChange }) => {
-  const [sessions, setSessions] = useState<ReviewSession[]>([])
+const SessionManager: React.FC<SessionManagerProps> = ({
+  session: _session,
+  onSessionChange,
+}) => {
+  // Prefix with _ to indicate intentionally unused
+  const [sessions, _setSessions] = useState<ReviewSession[]>([])
 
   useEffect(() => {
     // Load sessions from storage
@@ -27,7 +32,9 @@ const SessionManager: React.FC<SessionManagerProps> = ({ session, onSessionChang
       reviews: [],
       status: 'in-progress',
     }
-    onSessionChange(newSession)
+    if (onSessionChange) {
+      onSessionChange(newSession)
+    }
   }
 
   return (

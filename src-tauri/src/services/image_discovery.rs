@@ -1,10 +1,11 @@
-use crate::models::image::ImageCandidate;
-use serde_json::Value;
+// src/services/image_discovery.rs - Add at the top
+use std::path::{Path};  // Add this import
 use std::fs;
-use std::path::{Path, PathBuf};
 use glob::glob;
 use image::image_dimensions;
 use uuid::Uuid;
+use serde_json::Value;
+use crate::models::image::ImageCandidate;
 
 #[derive(Debug, Clone)]
 pub enum DiscoveryStrategy {

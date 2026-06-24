@@ -1,4 +1,3 @@
-use crate::models::image::ImageCandidate;
 use crate::services::image_discovery::{ImageDiscovery, DiscoveryStrategy};
 use crate::services::thumbnail_cache::ThumbnailCache;
 use serde_json::json;
@@ -74,7 +73,7 @@ pub async fn upload_image(
     }
 
     // Generate unique filename
-    let file_name = source_path
+    let _file_name = source_path
         .file_name()
         .ok_or_else(|| "Invalid file path".to_string())?
         .to_string_lossy();

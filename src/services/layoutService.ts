@@ -1,19 +1,21 @@
-import type { LayoutType } from '@/types'
-
+// src/services/layoutService.ts
 export const layoutService = {
-  calculateLayout: (candidateCount: number): LayoutType => {
-    if (candidateCount === 1) return 'single'
-    if (candidateCount <= 4) return 'grid'
-    if (candidateCount <= 8) return 'thumbnail-strip'
-    if (candidateCount <= 20) return 'paginated'
-    return 'masonry'
-  },
-
-  calculateGridDimensions: (containerWidth: number, containerHeight: number, itemCount: number) => {
-    const aspectRatio = containerWidth / containerHeight
-    let columns = Math.ceil(Math.sqrt(itemCount * aspectRatio))
-    let rows = Math.ceil(itemCount / columns)
+  calculateGrid: (items: number, maxColumns: number = 4) => {
+    // Use const since these are never reassigned
+    const columns = Math.min(maxColumns, items)
+    const rows = Math.ceil(items / columns)
 
     return { columns, rows }
+  },
+
+  calculateThumbnailStrip: (items: number) => {
+    const columns = Math.min(8, items)
+    const rows = Math.ceil(items / columns)
+    return { columns, rows }
+  },
+
+  calculatePagination: (items: number, pageSize: number = 9) => {
+    const totalPages = Math.ceil(items / pageSize)
+    return { totalPages, pageSize }
   },
 }

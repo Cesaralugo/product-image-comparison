@@ -1,34 +1,35 @@
-import { invoke } from '@tauri-apps/api/tauri'
+// src/services/api.ts
+import { invoke } from '@tauri-apps/api/core'
+import type { Product, ReviewSession, ReviewResult } from '@/types'
 
-// Product commands
-export const loadProductsFromCSV = (filePath: string) =>
-  invoke('load_products_from_csv', { filePath })
+export const loadProductsFromCSV = async (filePath: string): Promise<Product[]> => {
+  const result = await invoke<Product[]>('load_products_from_csv', { filePath })
+  return result
+}
 
-export const getProductsByReference = (references: string[]) =>
-  invoke('get_products_by_reference', { references })
+export const getProductsByReference = async (references: string[]): Promise<Product[]> => {
+  const result = await invoke<Product[]>('get_products_by_reference', { references })
+  return result
+}
 
-// Image commands
-export const findCandidateImages = (productReference: string) =>
-  invoke('find_candidate_images', { productReference })
+export const getReviewSession = async (sessionId: string): Promise<ReviewSession> => {
+  const result = await invoke<{ session: ReviewSession }>('get_review_session', { sessionId })
+  return result.session
+}
 
-export const uploadImage = (productReference: string, imagePath: string) =>
-  invoke('upload_image', { productReference, imagePath })
+export const saveReview = async (review: ReviewResult): Promise<void> => {
+  await invoke('save_review', { review })
+}
 
-// Review commands
-export const saveReview = (review: any) => invoke('save_review', { review })
+export const getSessionReviews = async (sessionId: string): Promise<ReviewResult[]> => {
+  const result = await invoke<{ reviews: ReviewResult[] }>('get_session_reviews', { sessionId })
+  return result.reviews
+}
 
-export const getReviewSession = (sessionId: string) =>
-  invoke('get_review_session', { sessionId })
-
-// Report commands
-export const generatePDFReport = (sessionId: string, outputPath: string) =>
-  invoke('generate_pdf_report', { sessionId, outputPath })
-
-export const generateCSVReport = (sessionId: string, outputPath: string) =>
-  invoke('generate_csv_report', { sessionId, outputPath })
-
-// Settings commands
-export const getSettings = () => invoke('get_settings')
-
-export const updateSettings = (settings: any) =>
-  invoke('update_settings', { settings })
+export const api = {
+  loadProductsFromCSV,
+  getProductsByReference,
+  getReviewSession,
+  saveReview,
+  getSessionReviews,
+}

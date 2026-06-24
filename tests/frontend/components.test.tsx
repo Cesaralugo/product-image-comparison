@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import Button from '@/components/Common/Button'
+import Button from '@components/Common/Button'
 
 describe('Button Component', () => {
   it('renders button with text', () => {
@@ -22,7 +22,7 @@ describe('Button Component', () => {
   })
 
   it('handles click events', () => {
-    const handleClick = vi.fn()
+    const handleClick = Button.fn()
     render(<Button onClick={handleClick}>Click</Button>)
     const button = screen.getByRole('button')
     button.click()

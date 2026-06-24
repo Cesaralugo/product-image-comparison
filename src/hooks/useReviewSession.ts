@@ -1,31 +1,33 @@
-import { useEffect, useState } from 'react'
+// src/hooks/useReviewSession.ts
+import { useState } from 'react'
 import type { ReviewSession } from '@/types'
 import { getReviewSession } from '@/services/api'
 
-export const useReviewSession = (sessionId: string | null) => {
+export const useReviewSession = (sessionId: string) => {
   const [session, setSession] = useState<ReviewSession | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!sessionId) return
-
-    const loadSession = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const result = await getReviewSession(sessionId)
-        // Process result
+  const loadSession = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await getReviewSession(sessionId)
+      // Ensure result is a valid ReviewSession object
+      if (result && typeof result === 'object' && 'id' in result) {
+        setSession(result as ReviewSession)
+      } else {
         setSession(null)
-      } catch (err) {
-        setError((err as Error).message)
-      } finally {
-        setIsLoading(false)
       }
+      return result
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load session'
+      setError(errorMsg)
+      throw err
+    } finally {
+      setLoading(false)
     }
+  }
 
-    loadSession()
-  }, [sessionId])
-
-  return { session, isLoading, error }
+  return { session, loading, error, loadSession }
 }

@@ -1,24 +1,18 @@
+// src/state/actions/sessionActions.ts
 import type { ReviewSession } from '@/types'
 
-export const sessionActions = {
-  startSession: (session: ReviewSession) => ({
-    currentSession: session,
-    isSessionActive: true,
-  }),
-
-  endSession: () => ({
-    currentSession: null,
-    isSessionActive: false,
-  }),
-
-  saveSession: (session: ReviewSession) => ({
-    currentSession: session,
-    sessions: (state: any) => {
-      const existing = state.sessions.findIndex((s: ReviewSession) => s.id === session.id)
-      if (existing >= 0) {
-        return [...state.sessions.slice(0, existing), session, ...state.sessions.slice(existing + 1)]
-      }
-      return [...state.sessions, session]
-    },
-  }),
+export interface SessionState {
+  sessions: ReviewSession[]
+  currentSession: ReviewSession | null
+  isLoading: boolean
+  error: string | null
 }
+
+export type SessionAction =
+  | { type: 'SET_SESSIONS'; payload: ReviewSession[] }
+  | { type: 'SET_CURRENT_SESSION'; payload: ReviewSession | null }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'ADD_SESSION'; payload: ReviewSession }
+  | { type: 'UPDATE_SESSION'; payload: ReviewSession }
+  | { type: 'REMOVE_SESSION'; payload: string }
