@@ -1,11 +1,13 @@
 // src/components/ReviewSession/SessionManager.tsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { CSVImport } from '@/components/Common'
 import { ImageSelector } from '@/components/Gallery'
 import { FolderSelector } from '@/components/Common'
 import Button from '@/components/Common/Button'
 import SessionProgress from './SessionProgress'
 import { useFileSystem } from '@/hooks/useFileSystem'
+import { useReviewSession } from '@/hooks/useReviewSession'
+import { createReviewSession, getAllSessions } from '@/services/api'
 import type { ReviewSession } from '@/types'
 import './SessionManager.css'
 
@@ -15,11 +17,39 @@ interface SessionManagerProps {
 }
 
 const SessionManager: React.FC<SessionManagerProps> = ({
-  session: _session,
+  session: externalSession,
   onSessionChange,
 }) => {
   const [sessions, setSessions] = useState<ReviewSession[]>([])
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    externalSession?.id || null
+  )
+
   const { pickSaveFile, writeFile } = useFileSystem()
+  // Remove isLoading state
+  const { session: loadedSession, loading, error } = useReviewSession(
+    selectedSessionId || ''
+  )
+
+  // Load all sessions on mount
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const result = await getAllSessions()
+        setSessions(result)
+      } catch (err) {
+        console.error('Failed to load sessions:', err)
+      }
+    }
+    loadSessions()
+  }, [])
+
+  // Update external session when loaded session changes
+  useEffect(() => {
+    if (loadedSession && onSessionChange) {
+      onSessionChange(loadedSession)
+    }
+  }, [loadedSession, onSessionChange])
 
   const handleImportCSV = async (data: Record<string, string>[]) => {
     console.log('Imported CSV data:', data)
@@ -32,7 +62,17 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     }))
 
     console.log('Products to load:', products)
-    alert(`Successfully imported ${products.length} products!`)
+
+    // Create a new session with the imported products
+    try {
+      const newSession = await createReviewSession(products.length)
+      setSessions(prev => [newSession, ...prev])
+      setSelectedSessionId(newSession.id)
+      alert(`Successfully imported ${products.length} products!`)
+    } catch (err) {
+      console.error('Failed to create session:', err)
+      alert('Failed to create session. Please try again.')
+    }
   }
 
   const handleImagesSelected = (paths: string[]) => {
@@ -60,32 +100,60 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     }
   }
 
-  const createNewSession = async () => {
-    const newSession: ReviewSession = {
-      id: `session-${Date.now()}`,
-      startedAt: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
-      productCount: 0,
-      reviewedCount: 0,
-      reviews: [],
-      status: 'in-progress',
+  const handleCreateNewSession = async () => {
+    try {
+      const newSession = await createReviewSession(0)
+      setSessions(prev => [newSession, ...prev])
+      setSelectedSessionId(newSession.id)
+      alert('New session created!')
+    } catch (err) {
+      console.error('Failed to create session:', err)
+      alert('Failed to create session. Please try again.')
     }
+  }
 
-    if (onSessionChange) {
-      onSessionChange(newSession)
+  const handleSelectSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId)
+  }
+
+  const handleDeleteSession = async (sessionId: string) => {
+    // TODO: Implement session deletion
+    setSessions(prev => prev.filter(s => s.id !== sessionId))
+    if (selectedSessionId === sessionId) {
+      setSelectedSessionId(null)
     }
-
-    setSessions(prev => [newSession, ...prev])
   }
 
   return (
     <div className="session-manager">
       <div className="session-header">
         <h2>Session Manager</h2>
-        <Button onClick={createNewSession} variant="primary">
+        <Button onClick={handleCreateNewSession} variant="primary">
           + New Session
         </Button>
       </div>
+
+      {error && (
+        <div className="session-error">
+          <span>❌</span> {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="session-loading">Loading session...</div>
+      )}
+
+      {loadedSession && (
+        <div className="session-details">
+          <h3>Current Session: {loadedSession.id}</h3>
+          <p>Status: {loadedSession.status}</p>
+          <p>Progress: {loadedSession.reviewedCount}/{loadedSession.productCount} products</p>
+          <SessionProgress
+            current={loadedSession.reviewedCount}
+            total={loadedSession.productCount}
+          />
+        </div>
+      )}
 
       <div className="session-grid">
         <div className="session-card">
@@ -137,21 +205,38 @@ const SessionManager: React.FC<SessionManagerProps> = ({
       </div>
 
       <div className="sessions-list">
-        <h3>Recent Sessions</h3>
+        <h3>All Sessions ({sessions.length})</h3>
         {sessions.length === 0 ? (
           <p className="no-sessions">No sessions yet. Create one above!</p>
         ) : (
           sessions.map((s: ReviewSession) => (
-            <div key={s.id} className="session-item">
+            <div
+              key={s.id}
+              className={`session-item ${selectedSessionId === s.id ? 'active' : ''}`}
+              onClick={() => handleSelectSession(s.id)}
+            >
               <div className="session-info">
                 <h4>{s.id}</h4>
                 <p>Progress: {s.reviewedCount}/{s.productCount} products</p>
                 <small>Started: {new Date(s.startedAt).toLocaleString()}</small>
+                <span className={`session-status ${s.status}`}>{s.status}</span>
               </div>
-              <SessionProgress
-                current={s.reviewedCount}
-                total={s.productCount}
-              />
+              <div className="session-actions">
+                <SessionProgress
+                  current={s.reviewedCount}
+                  total={s.productCount}
+                />
+                <Button
+                  variant="danger"
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteSession(s.id)
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
             </div>
           ))
         )}

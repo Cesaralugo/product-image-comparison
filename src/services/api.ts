@@ -12,8 +12,8 @@ export const getProductsByReference = async (references: string[]): Promise<Prod
   return result
 }
 
-export const getReviewSession = async (sessionId: string): Promise<ReviewSession> => {
-  const result = await invoke<{ session: ReviewSession }>('get_review_session', { sessionId })
+export const getReviewSession = async (sessionId: string): Promise<ReviewSession | null> => {
+  const result = await invoke<{ session: ReviewSession | null }>('get_review_session', { sessionId })
   return result.session
 }
 
@@ -26,10 +26,22 @@ export const getSessionReviews = async (sessionId: string): Promise<ReviewResult
   return result.reviews
 }
 
+export const createReviewSession = async (productCount: number): Promise<ReviewSession> => {
+  const result = await invoke<{ session: ReviewSession }>('create_review_session', { productCount })
+  return result.session
+}
+
+export const getAllSessions = async (): Promise<ReviewSession[]> => {
+  const result = await invoke<{ sessions: ReviewSession[] }>('get_all_sessions')
+  return result.sessions
+}
+
 export const api = {
   loadProductsFromCSV,
   getProductsByReference,
   getReviewSession,
   saveReview,
   getSessionReviews,
+  createReviewSession,
+  getAllSessions,
 }

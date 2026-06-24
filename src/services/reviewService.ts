@@ -7,7 +7,8 @@ export const reviewService = {
     await saveReview(review)
   },
 
-  getReviewSession: async (sessionId: string): Promise<ReviewSession> => {
-    return await getReviewSession(sessionId)
+  getReviewSession: async (sessionId: string): Promise<ReviewSession | null> => {
+    const result = await getReviewSession(sessionId)
+    return result // Now returns ReviewSession | null
   },
 }

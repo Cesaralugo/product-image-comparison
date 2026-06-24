@@ -1,5 +1,5 @@
 // src/hooks/useReviewSession.ts
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { ReviewSession } from '@/types'
 import { getReviewSession } from '@/services/api'
 
@@ -7,27 +7,61 @@ export const useReviewSession = (sessionId: string) => {
   const [session, setSession] = useState<ReviewSession | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isMounted = useRef(true)
 
-  const loadSession = async () => {
-    setLoading(true)
-    setError(null)
+  useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
+
+  const loadSession = useCallback(async () => {
+    if (!sessionId) {
+      if (isMounted.current) {
+        setSession(null)
+        setLoading(false)
+      }
+      return
+    }
+
+    if (isMounted.current) {
+      setLoading(true)
+      setError(null)
+    }
+
     try {
       const result = await getReviewSession(sessionId)
-      // Ensure result is a valid ReviewSession object
-      if (result && typeof result === 'object' && 'id' in result) {
-        setSession(result as ReviewSession)
-      } else {
-        setSession(null)
+      if (isMounted.current) {
+        if (result && typeof result === 'object' && 'id' in result) {
+          setSession(result as ReviewSession)
+        } else {
+          setSession(null)
+        }
+        setLoading(false)
       }
       return result
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to load session'
-      setError(errorMsg)
+      if (isMounted.current) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to load session'
+        setError(errorMsg)
+        setLoading(false)
+      }
+      console.error('Error loading session:', err)
       throw err
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [sessionId])
+
+  // Use a ref to track if the effect should run
+  const hasLoaded = useRef(false)
+
+  // Auto-load when sessionId changes, but only once per sessionId
+  useEffect(() => {
+    if (sessionId && !hasLoaded.current) {
+      hasLoaded.current = true
+      loadSession()
+    }
+  }, [sessionId, loadSession])
 
   return { session, loading, error, loadSession }
 }
