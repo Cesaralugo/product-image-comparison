@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReviewResult {
     pub id: String,
+    pub session_id: String,  // Add this field
     pub product_reference: String,
     pub candidates_presented: Vec<String>,
     pub selected_images: Vec<String>,
