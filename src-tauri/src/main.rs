@@ -19,8 +19,11 @@ fn main() {
             commands::get_review_session,
             commands::generate_pdf_report,
             commands::generate_csv_report,
-            commands::get_settings,
-            commands::update_settings,
+            commands::settings::get_settings,
+            commands::settings::update_settings,
+            commands::settings::reset_settings,
+            commands::settings::get_setting,
+            commands::settings::update_setting,
         ])
         .setup(|app| {
             #[cfg(debug_assertions)]

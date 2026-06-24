@@ -1,4 +1,5 @@
-use crate::config::{CACHE_DIR, THUMBNAIL_SIZE};
+// src/services/thumbnail_cache.rs
+use crate::config::{get_cache_dir, get_thumbnail_size};
 use image::imageops::FilterType;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -24,10 +25,12 @@ impl ThumbnailCache {
         let (width, height) = (img.width(), img.height());
         let ratio = width as f32 / height as f32;
 
+        let thumbnail_size = get_thumbnail_size(); // Get the current thumbnail size
+
         let (thumb_width, thumb_height) = if ratio > 1.0 {
-            (THUMBNAIL_SIZE, (THUMBNAIL_SIZE as f32 / ratio) as u32)
+            (thumbnail_size, (thumbnail_size as f32 / ratio) as u32)
         } else {
-            ((THUMBNAIL_SIZE as f32 * ratio) as u32, THUMBNAIL_SIZE)
+            ((thumbnail_size as f32 * ratio) as u32, thumbnail_size)
         };
 
         // Resize image
@@ -109,7 +112,8 @@ impl ThumbnailCache {
 
     /// Get cache directory, creating if necessary
     fn get_cache_dir() -> Result<PathBuf, String> {
-        let cache_dir = Path::new(CACHE_DIR);
+        let cache_dir_str = get_cache_dir();
+        let cache_dir = Path::new(&cache_dir_str);
 
         if !cache_dir.exists() {
             fs::create_dir_all(cache_dir)

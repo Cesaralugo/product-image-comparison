@@ -1,5 +1,6 @@
 use crate::models::Product;
 use crate::models::review::{ReviewResult, ReviewSession};
+use crate::config;
 use rusqlite::{params, Connection};
 
 pub struct Database;
@@ -65,6 +66,43 @@ impl Database {
         )
         .map_err(|e| format!("Failed to create index: {}", e))?;
 
+        // Create settings table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS settings (
+                key         TEXT PRIMARY KEY,
+                value       TEXT NOT NULL,
+                updated_at  TEXT NOT NULL
+            )",
+            [],
+        )
+        .map_err(|e| format!("Failed to create 'settings' table: {}", e))?;
+
+        // Initialize default settings if table is empty
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM settings",
+            [],
+            |row| row.get(0),
+        ).map_err(|e| format!("Failed to query settings count: {}", e))?;
+
+        if count == 0 {
+            // Insert default settings
+            let default_settings = crate::models::settings::AppSettings::default();
+            let settings_json = serde_json::to_string(&default_settings)
+                .map_err(|e| format!("Failed to serialize default settings: {}", e))?;
+
+            conn.execute(
+                "INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
+                params![
+                    "app_settings",
+                    settings_json,
+                    chrono::Utc::now().to_rfc3339(),
+                ],
+            ).map_err(|e| format!("Failed to initialize default settings: {}", e))?;
+
+            // Apply default settings to runtime
+            config::set_thumbnail_size(default_settings.ui.thumbnail_size);
+            config::set_cache_dir(default_settings.storage.images_path);
+        }
         Ok(conn)
     }
 
@@ -328,5 +366,72 @@ impl Database {
     }
 
     Ok(reviews)
+    }
+    /// Get settings from database
+    pub fn get_settings(conn: &Connection) -> Result<crate::models::settings::AppSettings, String> {
+        let mut stmt = conn
+            .prepare("SELECT value FROM settings WHERE key = ?1")
+            .map_err(|e| format!("Failed to prepare settings query: {}", e))?;
+
+        let settings_json: String = stmt
+            .query_row(params!["app_settings"], |row| row.get(0))
+            .map_err(|e| format!("Failed to get settings: {}", e))?;
+
+        let settings: crate::models::settings::AppSettings = serde_json::from_str(&settings_json)
+            .map_err(|e| format!("Failed to parse settings: {}", e))?;
+
+        Ok(settings)
+    }
+
+    /// Update settings in database
+    pub fn update_settings(
+        conn: &Connection,
+        settings: &crate::models::settings::AppSettings,
+    ) -> Result<(), String> {
+        let settings_json = serde_json::to_string(settings)
+            .map_err(|e| format!("Failed to serialize settings: {}", e))?;
+
+        let updated_at = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "UPDATE settings SET value = ?1, updated_at = ?2 WHERE key = ?3",
+            params![settings_json, updated_at, "app_settings"],
+        )
+        .map_err(|e| format!("Failed to update settings: {}", e))?;
+
+        Ok(())
+    }
+
+    /// Get a specific setting value by key (for nested settings)
+    pub fn get_setting_value<T: serde::de::DeserializeOwned>(
+        conn: &Connection,
+        key: &str,
+    ) -> Result<Option<T>, String> {
+        let settings = Self::get_settings(conn)?;
+
+        // This is a simplified approach - you might want to use a more sophisticated
+        // path-based access for nested settings
+        match key {
+            "default_strategy" => {
+                serde_json::to_value(settings.image_discovery.default_strategy)
+                    .and_then(|v| serde_json::from_value(v))
+                    .map(Some)
+                    .map_err(|e| format!("Failed to convert setting: {}", e))
+            }
+            "base_path" => {
+                serde_json::to_value(settings.image_discovery.base_path)
+                    .and_then(|v| serde_json::from_value(v))
+                    .map(Some)
+                    .map_err(|e| format!("Failed to convert setting: {}", e))
+            }
+            "theme" => {
+                serde_json::to_value(settings.ui.theme)
+                    .and_then(|v| serde_json::from_value(v))
+                    .map(Some)
+                    .map_err(|e| format!("Failed to convert setting: {}", e))
+            }
+            // Add more as needed
+            _ => Ok(None),
+        }
     }
 }

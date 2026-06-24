@@ -1,5 +1,4 @@
 use crate::models::image::ImageCandidate;
-use crate::config::{CACHE_DIR, THUMBNAIL_SIZE};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
