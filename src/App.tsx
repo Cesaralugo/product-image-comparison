@@ -1,33 +1,24 @@
-import { useState, useEffect } from 'react'
-import MainLayout from './components/Layout/MainLayout'
+// src/App.tsx
+import React from 'react'
 import { useAppStore } from './state/store'
+import MainLayout from './components/Layout/MainLayout'
 import './App.css'
 
-function App() {
-  const [isLoading, setIsLoading] = useState(true)
-  const { setIsLoading: setStoreLoading } = useAppStore()
+const App: React.FC = () => {
+  // Remove the setIsLoading reference since it doesn't exist in the store
+  // The store has 'setLoading' instead of 'setIsLoading'
+  const { loadSessions } = useAppStore()
 
-  useEffect(() => {
-    // Initialize app
-    const initializeApp = async () => {
-      try {
-        // Load initial settings, sessions, etc.
-        setStoreLoading(false)
-      } catch (error) {
-        console.error('Failed to initialize app:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  // Load sessions on mount
+  React.useEffect(() => {
+    loadSessions().catch(console.error)
+  }, [loadSessions])
 
-    initializeApp()
-  }, [setStoreLoading])
-
-  if (isLoading) {
-    return <div className="loading">Loading...</div>
-  }
-
-  return <MainLayout />
+  return (
+    <div className="app">
+      <MainLayout />
+    </div>
+  )
 }
 
 export default App

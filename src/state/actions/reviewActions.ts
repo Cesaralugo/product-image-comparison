@@ -1,19 +1,27 @@
 // src/state/actions/reviewActions.ts
 import type { ReviewResult } from '@/types'
+import { useAppStore } from '@/state/store'
 
-export interface ReviewState {
-  reviews: ReviewResult[]
-  currentReview: ReviewResult | null
-  isLoading: boolean
-  error: string | null
+export const reviewActions = {
+  addReview: (review: ReviewResult) =>
+    useAppStore.getState().addReview(review),
+
+  updateReview: (review: ReviewResult) =>
+    useAppStore.getState().updateReview(review),
+
+  loadReviews: (sessionId: string) =>
+    useAppStore.getState().loadReviews(sessionId),
+
+  getReviewsForCurrentSession: () => {
+    const state = useAppStore.getState()
+    return state.reviews
+  },
+
+  getReviewForProduct: (productReference: string) => {
+    const state = useAppStore.getState()
+    // Use correct property name: productReference (not product_reference)
+    return state.reviews.find(
+      (r) => r.productReference === productReference
+    ) || null
+  },
 }
-
-// Replace any with specific action types
-export type ReviewAction =
-  | { type: 'SET_REVIEWS'; payload: ReviewResult[] }
-  | { type: 'SET_CURRENT_REVIEW'; payload: ReviewResult | null }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'ADD_REVIEW'; payload: ReviewResult }
-  | { type: 'UPDATE_REVIEW'; payload: ReviewResult }
-  | { type: 'REMOVE_REVIEW'; payload: string }

@@ -1,10 +1,24 @@
+// src/App.tsx
 import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './styles/globals.css'
+import { useAppStore } from './state/store'
+import MainLayout from './components/Layout/MainLayout'
+import './App.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+const App: React.FC = () => {
+  // Remove setIsLoading if it doesn't exist in the store
+  // const { setIsLoading: setStoreLoading } = useAppStore()
+  const { loadSessions } = useAppStore()
+
+  // Load sessions on mount
+  React.useEffect(() => {
+    loadSessions().catch(console.error)
+  }, [loadSessions])
+
+  return (
+    <div className="app">
+      <MainLayout />
+    </div>
+  )
+}
+
+export default App

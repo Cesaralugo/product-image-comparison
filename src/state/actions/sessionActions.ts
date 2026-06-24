@@ -1,18 +1,19 @@
 // src/state/actions/sessionActions.ts
 import type { ReviewSession } from '@/types'
+import { useAppStore } from '@/state/store'
 
-export interface SessionState {
-  sessions: ReviewSession[]
-  currentSession: ReviewSession | null
-  isLoading: boolean
-  error: string | null
+export const sessionActions = {
+  // Use the store directly
+  loadSessions: () => useAppStore.getState().loadSessions(),
+
+  createSession: (productCount: number) =>
+    useAppStore.getState().createSession(productCount),
+
+  selectSession: (sessionId: string) =>
+    useAppStore.getState().selectSession(sessionId),
+
+  endSession: () => useAppStore.getState().endSession(),
+
+  updateSession: (session: ReviewSession) =>
+    useAppStore.getState().updateSession(session),
 }
-
-export type SessionAction =
-  | { type: 'SET_SESSIONS'; payload: ReviewSession[] }
-  | { type: 'SET_CURRENT_SESSION'; payload: ReviewSession | null }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'ADD_SESSION'; payload: ReviewSession }
-  | { type: 'UPDATE_SESSION'; payload: ReviewSession }
-  | { type: 'REMOVE_SESSION'; payload: string }
