@@ -1,11 +1,24 @@
+use crate::csv_parser::CSVParser;
+use crate::database::Database;
 use serde_json::json;
+
+// NOTE: hardcoded relative path as a starting point. In a real Tauri app
+// you'll likely want to resolve this via the app's data directory
+// (e.g. tauri::api::path::app_data_dir) and/or manage a single open
+// Connection in Tauri's State so every command reuses it instead of
+// opening the file fresh each call.
+const DB_PATH: &str = "products.db";
 
 #[tauri::command]
 pub async fn load_products_from_csv(file_path: String) -> Result<serde_json::Value, String> {
-    // TODO: Implement CSV loading logic
+    let products = CSVParser::parse_products(&file_path)?;
+
+    let conn = Database::init(DB_PATH)?;
+    let products_loaded = Database::upsert_products(&conn, &products)?;
+
     Ok(json!({
         "status": "success",
-        "products_loaded": 0
+        "products_loaded": products_loaded
     }))
 }
 
@@ -13,8 +26,10 @@ pub async fn load_products_from_csv(file_path: String) -> Result<serde_json::Val
 pub async fn get_products_by_reference(
     references: Vec<String>,
 ) -> Result<serde_json::Value, String> {
-    // TODO: Implement product retrieval logic
+    let conn = Database::init(DB_PATH)?;
+    let products = Database::get_products_by_reference(&conn, &references)?;
+
     Ok(json!({
-        "products": []
+        "products": products
     }))
 }
