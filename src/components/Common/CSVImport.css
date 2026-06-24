@@ -1,0 +1,105 @@
+/* src/components/Common/CSVImport.css */
+.csv-import {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+  width: 100%;
+}
+
+.csv-import .import-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.csv-import .file-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--bg-tertiary, #f0f0f0);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary, #555);
+  border: 1px solid var(--border-color, #e0e0e0);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-import .file-name .file-icon {
+  font-size: 16px;
+}
+
+.csv-import .error-text {
+  color: var(--error-color, #dc3545);
+  font-size: 13px;
+  padding: 6px 12px;
+  background: var(--error-bg, #f8d7da);
+  border-radius: 4px;
+  border: 1px solid var(--error-border, #f5c6cb);
+}
+
+.csv-import .success-text {
+  color: var(--success-color, #28a745);
+  font-size: 13px;
+  padding: 6px 12px;
+  background: var(--success-bg, #d4edda);
+  border-radius: 4px;
+  border: 1px solid var(--success-border, #c3e6cb);
+}
+
+.csv-import .import-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-secondary, #555);
+  padding: 4px 0;
+}
+
+.csv-import .import-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.csv-import .import-stats .stat-number {
+  font-weight: 600;
+  color: var(--text-primary, #222);
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .csv-import .file-name {
+    background: var(--bg-tertiary-dark, #2a2a2a);
+    border-color: var(--border-color-dark, #444);
+    color: var(--text-secondary-dark, #aaa);
+  }
+
+  .csv-import .error-text {
+    background: var(--error-bg-dark, #3d1f22);
+    border-color: var(--error-border-dark, #58151c);
+    color: var(--error-color-dark, #f8a5a5);
+  }
+
+  .csv-import .success-text {
+    background: var(--success-bg-dark, #1a3d2a);
+    border-color: var(--success-border-dark, #1a5a3a);
+    color: var(--success-color-dark, #8affb0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .csv-import .import-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .csv-import .file-name {
+    max-width: 100%;
+  }
+}

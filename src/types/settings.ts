@@ -1,4 +1,6 @@
 // src/types/settings.ts
+// Remove any circular imports - this file should define the types, not import them
+
 export interface DiscoverySettings {
   defaultStrategy: string
   basePath: string
@@ -21,8 +23,16 @@ export interface StorageSettings {
   compressionQuality: number
 }
 
+export interface ReviewSettings {
+  requireNotes: boolean
+  allowMultipleSelection: boolean
+  maxUploadsPerProduct: number
+  autoSaveProgress: boolean
+}
+
 export interface AppSettings {
   discovery: DiscoverySettings
   performance: PerformanceSettings
   storage: StorageSettings
+  review: ReviewSettings
 }

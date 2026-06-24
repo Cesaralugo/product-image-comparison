@@ -9,7 +9,7 @@ export const getLayoutThresholds = async () => {
   const settings = await settingsService.getSettings()
   return {
     SINGLE: 1,
-    GRID: settings.ui.gridColumns,
+    GRID: settings.performance.gridColumns,  // Changed from settings.ui.gridColumns
     THUMBNAIL_STRIP: 8,
     PAGINATED: 20,
   }
@@ -21,7 +21,7 @@ export const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 export const getCacheConfig = async () => {
   const settings = await settingsService.getSettings()
   return {
-    THUMBNAIL_SIZE: settings.ui.thumbnailSize,
+    THUMBNAIL_SIZE: settings.performance.thumbnailSize,  // Changed from settings.ui.thumbnailSize
     MAX_CACHE_SIZE: settings.storage.cacheSizeMb * 1024 * 1024, // Convert MB to bytes
   }
 }

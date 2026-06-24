@@ -1,9 +1,12 @@
 // src/components/Settings/SettingsPanel.tsx
-import React, { useState } from 'react'
+import React, { useState } from 'react'  // Remove useEffect
 import ImageDiscoverySettings from './ImageDiscoverySettings'
 import PerformanceSettings from './PerformanceSettings'
 import StorageSettings from './StorageSettings'
+import { FolderSelector } from '@/components/Common'
+// Remove useSettings import if not used
 import type { AppSettings, DiscoverySettings, PerformanceSettings as PerfSettings, StorageSettings as StorSettings } from '@/types/settings'
+import './SettingsPanel.css'
 
 interface SettingsPanelProps {
   settings?: AppSettings
@@ -17,14 +20,34 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   settings
 }) => {
   const [activeTab, setActiveTab] = useState<'discovery' | 'performance' | 'storage'>('discovery')
+  const [imageFolder, setImageFolder] = useState(settings?.discovery?.basePath || '')
+  // Remove unused pickFolder
 
-  const handleSave = () => {
-    if (onSave && settings) {
-      onSave(settings)
+  const handleFolderSelected = (path: string) => {
+    setImageFolder(path)
+    if (onUpdate && settings) {
+      onUpdate({
+        ...settings,
+        discovery: {
+          ...settings.discovery,
+          basePath: path
+        }
+      })
     }
   }
 
-  // Helper to update specific sections while preserving the rest
+  const handleSave = () => {
+    if (onSave && settings) {
+      onSave({
+        ...settings,
+        discovery: {
+          ...settings.discovery,
+          basePath: imageFolder
+        }
+      })
+    }
+  }
+
   const updateDiscovery = (discoverySettings: DiscoverySettings) => {
     if (onUpdate && settings) {
       onUpdate({
@@ -77,12 +100,28 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
       <div className="settings-content">
         {activeTab === 'discovery' && (
-          <ImageDiscoverySettings
-            settings={settings?.discovery}
-            onUpdate={updateDiscovery}
-            onSave={handleSave}
-          />
+          <div className="settings-section">
+            <h3>Image Discovery Settings</h3>
+
+            <div className="setting-group">
+              <label>Image Base Path</label>
+              <FolderSelector
+                onFolderSelected={handleFolderSelected}
+                label="Select Image Folder"
+              />
+              {imageFolder && (
+                <p className="setting-help">Current path: {imageFolder}</p>
+              )}
+            </div>
+
+            <ImageDiscoverySettings
+              settings={settings?.discovery}
+              onUpdate={updateDiscovery}
+              onSave={handleSave}
+            />
+          </div>
         )}
+
         {activeTab === 'performance' && (
           <PerformanceSettings
             settings={settings?.performance}
@@ -90,6 +129,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             onSave={handleSave}
           />
         )}
+
         {activeTab === 'storage' && (
           <StorageSettings
             settings={settings?.storage}

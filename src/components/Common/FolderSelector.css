@@ -1,0 +1,115 @@
+/* src/components/Common/FolderSelector.css */
+.folder-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+  width: 100%;
+}
+
+.folder-selector .selector-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.folder-selector .folder-path {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-tertiary, #f0f0f0);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary, #555);
+  border: 1px solid var(--border-color, #e0e0e0);
+  font-family: 'Courier New', monospace;
+  word-break: break-all;
+  max-width: 400px;
+}
+
+.folder-selector .folder-path .folder-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.folder-selector .folder-path .path-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-selector .folder-path .clear-path {
+  background: none;
+  border: none;
+  color: var(--text-muted, #999);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 16px;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.folder-selector .folder-path .clear-path:hover {
+  color: var(--error-color, #dc3545);
+}
+
+.folder-selector .error-text {
+  color: var(--error-color, #dc3545);
+  font-size: 13px;
+  padding: 6px 12px;
+  background: var(--error-bg, #f8d7da);
+  border-radius: 4px;
+  border: 1px solid var(--error-border, #f5c6cb);
+}
+
+.folder-selector .folder-info {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-muted, #999);
+  padding: 4px 0;
+}
+
+.folder-selector .folder-info span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .folder-selector .folder-path {
+    background: var(--bg-tertiary-dark, #2a2a2a);
+    border-color: var(--border-color-dark, #444);
+    color: var(--text-secondary-dark, #aaa);
+  }
+
+  .folder-selector .folder-path .clear-path {
+    color: var(--text-muted-dark, #666);
+  }
+
+  .folder-selector .folder-path .clear-path:hover {
+    color: var(--error-color-dark, #f8a5a5);
+  }
+
+  .folder-selector .error-text {
+    background: var(--error-bg-dark, #3d1f22);
+    border-color: var(--error-border-dark, #58151c);
+    color: var(--error-color-dark, #f8a5a5);
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .folder-selector .selector-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .folder-selector .folder-path {
+    max-width: 100%;
+    font-size: 12px;
+  }
+}

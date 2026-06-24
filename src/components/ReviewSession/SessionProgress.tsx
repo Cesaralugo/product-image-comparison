@@ -1,35 +1,32 @@
+// src/components/ReviewSession/SessionProgress.tsx
+import React from 'react'
 import './SessionProgress.css'
 
 interface SessionProgressProps {
-  reviewedCount: number
-  totalCount: number
-  currentIndex: number
+  current: number
+  total: number
+  label?: string
 }
 
 const SessionProgress: React.FC<SessionProgressProps> = ({
-  reviewedCount,
-  totalCount,
-  currentIndex,
+  current,
+  total,
+  label
 }) => {
-  const progressPercentage = totalCount > 0 ? (reviewedCount / totalCount) * 100 : 0
+  const percentage = total > 0 ? (current / total) * 100 : 0
 
   return (
     <div className="session-progress">
-      <div className="progress-info">
-        <span className="progress-text">
-          Product {currentIndex + 1} of {totalCount}
-        </span>
-        <span className="progress-count">
-          {reviewedCount} reviewed
-        </span>
-      </div>
+      {label && <span className="progress-label">{label}</span>}
       <div className="progress-bar">
         <div
           className="progress-fill"
-          style={{ width: `${progressPercentage}%` }}
+          style={{ width: `${Math.min(percentage, 100)}%` }}
         />
       </div>
-      <div className="progress-percentage">{Math.round(progressPercentage)}%</div>
+      <span className="progress-text">
+        {current}/{total} ({percentage.toFixed(0)}%)
+      </span>
     </div>
   )
 }
