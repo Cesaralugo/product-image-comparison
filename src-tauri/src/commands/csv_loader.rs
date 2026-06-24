@@ -1,5 +1,5 @@
-use crate::csv_parser::CSVParser;
-use crate::database::Database;
+use crate::services::csv_parser::CSVParser;
+use crate::services::database::Database;
 use serde_json::json;
 
 // NOTE: hardcoded relative path as a starting point. In a real Tauri app

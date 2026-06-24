@@ -253,11 +253,11 @@ impl Database {
 
         conn.execute(
             "INSERT INTO review_results
-             (id, session_id, product_reference, candidates_presented,
-              selected_images, uploaded_replacements, reviewer_notes,
-              decision_timestamp, time_to_decide)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-             ON CONFLICT(session_id, product_reference) DO UPDATE SET
+            (id, session_id, product_reference, candidates_presented,
+            selected_images, uploaded_replacements, reviewer_notes,
+            decision_timestamp, time_to_decide)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            ON CONFLICT(session_id, product_reference) DO UPDATE SET
                 id = excluded.id,
                 candidates_presented = excluded.candidates_presented,
                 selected_images = excluded.selected_images,
@@ -267,7 +267,7 @@ impl Database {
                 time_to_decide = excluded.time_to_decide",
             params![
                 review.id,
-                review.product_reference, // We'll need to store session_id separately
+                review.session_id,  // Add session_id parameter
                 review.product_reference,
                 candidates_json,
                 selected_json,
@@ -283,49 +283,50 @@ impl Database {
 
     /// Retrieves all reviews for a session
     pub fn get_session_reviews(
-        conn: &Connection,
-        session_id: &str,
+    conn: &Connection,
+    session_id: &str,
     ) -> Result<Vec<ReviewResult>, String> {
-        let mut stmt = conn
-            .prepare(
-                "SELECT id, product_reference, candidates_presented, selected_images,
-                        uploaded_replacements, reviewer_notes, decision_timestamp, time_to_decide
-                 FROM review_results WHERE session_id = ?1
-                 ORDER BY decision_timestamp",
-            )
-            .map_err(|e| format!("Failed to prepare reviews query: {}", e))?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, product_reference, candidates_presented, selected_images,
+                    uploaded_replacements, reviewer_notes, decision_timestamp, time_to_decide
+                FROM review_results WHERE session_id = ?1
+                ORDER BY decision_timestamp",
+        )
+        .map_err(|e| format!("Failed to prepare reviews query: {}", e))?;
 
-        let rows = stmt
-            .query_map(params![session_id], |row| {
-                let candidates_json: String = row.get(2)?;
-                let selected_json: String = row.get(3)?;
-                let uploaded_json: String = row.get(4)?;
+    let rows = stmt
+        .query_map(params![session_id], |row| {
+            let candidates_json: String = row.get(2)?;
+            let selected_json: String = row.get(3)?;
+            let uploaded_json: String = row.get(4)?;
 
-                let candidates_presented = serde_json::from_str(&candidates_json)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(2, rusqlite::types::Type::Text, Box::new(e)))?;
-                let selected_images = serde_json::from_str(&selected_json)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(3, rusqlite::types::Type::Text, Box::new(e)))?;
-                let uploaded_replacements = serde_json::from_str(&uploaded_json)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(4, rusqlite::types::Type::Text, Box::new(e)))?;
+            let candidates_presented = serde_json::from_str(&candidates_json)
+                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(2, rusqlite::types::Type::Text, Box::new(e)))?;
+            let selected_images = serde_json::from_str(&selected_json)
+                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(3, rusqlite::types::Type::Text, Box::new(e)))?;
+            let uploaded_replacements = serde_json::from_str(&uploaded_json)
+                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(4, rusqlite::types::Type::Text, Box::new(e)))?;
 
-                Ok(ReviewResult {
-                    id: row.get(0)?,
-                    product_reference: row.get(1)?,
-                    candidates_presented,
-                    selected_images,
-                    uploaded_replacements,
-                    reviewer_notes: row.get(5)?,
-                    decision_timestamp: row.get(6)?,
-                    time_to_decide: row.get(7)?,
-                })
+            Ok(ReviewResult {
+                id: row.get(0)?,
+                session_id: session_id.to_string(), // Add session_id field
+                product_reference: row.get(1)?,
+                candidates_presented,
+                selected_images,
+                uploaded_replacements,
+                reviewer_notes: row.get(5)?,
+                decision_timestamp: row.get(6)?,
+                time_to_decide: row.get(7)?,
             })
-            .map_err(|e| format!("Failed to query reviews: {}", e))?;
+        })
+        .map_err(|e| format!("Failed to query reviews: {}", e))?;
 
-        let mut reviews = Vec::new();
-        for row in rows {
-            reviews.push(row.map_err(|e| format!("Failed to read review row: {}", e))?);
-        }
+    let mut reviews = Vec::new();
+    for row in rows {
+        reviews.push(row.map_err(|e| format!("Failed to read review row: {}", e))?);
+    }
 
-        Ok(reviews)
+    Ok(reviews)
     }
 }
