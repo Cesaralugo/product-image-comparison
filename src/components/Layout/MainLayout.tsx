@@ -4,6 +4,7 @@ import { useAppStore } from '@/state/store'
 import { saveReview } from '@/services/api'
 import Header from './Header'
 import Sidebar from './Sidebar'
+import { imageService } from '@/services/imageService'
 import SessionManager from '@/components/ReviewSession/SessionManager'
 import SettingsPanel from '@/components/Settings/SettingsPanel'
 import ReportGenerator from '@/components/Reports/ReportGenerator'
@@ -33,11 +34,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [selectedImages, setSelectedImages] = useState<string[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [reviewMessage, setReviewMessage] = useState<string | null>(null)
-  // const [images, setImages] = useState<string[]>([]) // Remove this - images come from GalleryView via callback
 
-  // Use ref to track if initial selection has been made
   const hasSelectedInitial = useRef(false)
-  // Store images from gallery
   const [galleryImages, setGalleryImages] = useState<string[]>([])
 
   useEffect(() => {
@@ -58,7 +56,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     console.log('📦 Products in store updated:', products)
   }, [products])
 
-  // Update getProductDetails:
   const getProductDetails = (reference: string) => {
     console.log('🔍 Looking for product:', reference)
     console.log('📦 Available products:', products)
@@ -78,18 +75,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     setReviewMessage(null)
 
     try {
-      // Get product details from the store
       const productDetails = getProductDetails(selectedProduct)
       console.log('📦 Product details for review:', productDetails)
 
-      // Build the review with complete product information
       const review: ReviewResult = {
         id: `review-${Date.now()}`,
         session_id: currentSession.id,
         product_reference: selectedProduct,
         product_description: productDetails?.description || '',
         product_metadata: productDetails?.metadata || {},
-        candidates_presented: galleryImages, // Use galleryImages from GalleryView
+        candidates_presented: galleryImages,
         selected_images: selectedImages,
         uploaded_replacements: [],
         reviewer_notes: reviewNotes,
@@ -98,8 +93,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         status: decision
       }
 
-      console.log('📝 Saving review with description:', review.product_description)
-      console.log('📝 Full review:', review)
+      console.log('📝 Saving review:', review)
       await saveReview(review)
       setReviewMessage(`✅ Review saved successfully! Product ${selectedProduct} ${decision}`)
       setReviewNotes('')
@@ -114,14 +108,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }
 
-  // Handle image selection from gallery
+  // ✅ Handle image selection from gallery
   const handleImageSelect = (path: string) => {
-    console.log('🖼️ Image selected:', path)
-    setSelectedImages(prev =>
-      prev.includes(path)
-        ? prev.filter(p => p !== path)
-        : [...prev, path]
-    )
+    console.log('📸 Toggling image selection:', path)
+    setSelectedImages(prev => {
+      if (prev.includes(path)) {
+        return prev.filter(p => p !== path)
+      } else {
+        return [...prev, path]
+      }
+    })
   }
 
   // Handle images loaded from gallery
@@ -203,21 +199,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       case 'gallery': {
         const productRefs = currentSession?.productReferences || []
-        // ✅ Only set currentProduct if there are product references
         const currentProduct = (productRefs.length > 0 && selectedProduct && productRefs.includes(selectedProduct))
           ? selectedProduct
           : productRefs[0] || ''
 
         const productDetails = currentProduct ? getProductDetails(currentProduct) : null
-
-        // Use session ID and product as key to force re-render
         const galleryKey = `${currentSession?.id || 'no-session'}-${currentProduct || 'no-product'}`
 
         return (
           <div className="page-content">
             <h2>🖼️ Gallery</h2>
 
-            {/* Session info */}
             {currentSession && (
               <div className="session-info-banner">
                 <span>📋 Session: {currentSession.id.substring(0, 12)}...</span>
@@ -226,7 +218,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </div>
             )}
 
-            {/* Product selector - only show if there are products */}
             {productRefs.length > 0 ? (
               <div className="gallery-controls">
                 <label htmlFor="product-select">Select Product:</label>
@@ -252,7 +243,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </div>
             )}
 
-            {/* Product Metadata - only show if we have a product */}
             {productDetails && currentProduct && (
               <div className="product-metadata">
                 <h3>📋 Product Details</h3>
@@ -272,12 +262,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     </span>
                   </div>
 
-                  {/* ✅ Metadata - properly parsed */}
                   <div className="metadata-item full-width">
                     <label>Product Metadata:</label>
                     <div className="metadata-content">
                       {productDetails.metadata ? (
-                        // Check if metadata is an object (parsed JSON)
                         typeof productDetails.metadata === 'object' &&
                         !Array.isArray(productDetails.metadata) &&
                         productDetails.metadata !== null ? (
@@ -292,7 +280,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                             ))}
                           </div>
                         ) : (
-                          // If metadata is a string, try to parse it
                           typeof productDetails.metadata === 'string' ? (
                             (() => {
                               try {
@@ -311,8 +298,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                                     </div>
                                   );
                                 }
-                              } catch (e) {
-                                // Not valid JSON, show as raw string
+                              } catch (_e) {
                                 return <span className="metadata-raw">{productDetails.metadata}</span>;
                               }
                               return <span className="metadata-raw">{productDetails.metadata}</span>;
@@ -330,7 +316,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </div>
             )}
 
-            {/* Gallery View - only show if we have a product */}
             {currentProduct ? (
               <GalleryView
                 key={galleryKey}
@@ -350,7 +335,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </div>
             )}
 
-            {/* Review Controls - only show if we have a product */}
             {currentProduct && (
               <div className="review-controls">
                 <h3>📝 Review Product: {currentProduct}</h3>
@@ -374,11 +358,37 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
                 {selectedImages.length > 0 && (
                   <div className="selected-images-preview">
-                    <label>Selected Images ({selectedImages.length}):</label>
+                    <label>📸 Selected for Review ({selectedImages.length}):</label>
                     <div className="selected-thumbnails">
                       {selectedImages.map((path, i) => (
-                        <img key={i} src={path} alt={`Selected ${i+1}`} />
+                        <div key={i} className="selected-thumbnail-item">
+                          <img
+                            src={imageService.getImageUrl(path)}
+                            alt={`Selected ${i + 1}`}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E'
+                            }}
+                          />
+                          <button
+                            className="remove-selected"
+                            onClick={() => {
+                              setSelectedImages(prev => prev.filter(p => p !== path))
+                            }}
+                            title="Remove from selection"
+                          >
+                            ×
+                          </button>
+                          <span className="selected-index">{i + 1}</span>
+                        </div>
                       ))}
+                    </div>
+                    <div className="selected-actions">
+                      <button
+                        className="clear-selected"
+                        onClick={() => setSelectedImages([])}
+                      >
+                        🗑️ Clear All
+                      </button>
                     </div>
                   </div>
                 )}

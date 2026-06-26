@@ -86,33 +86,27 @@ const GalleryView: React.FC<GalleryViewProps> = ({
     }
   }, [basePath, onImagesLoaded])
 
-  // Reset when productReference changes - using a different approach
+  // Reset when productReference changes
   useEffect(() => {
-    // Use a ref to track if we need to reset
     const resetAndLoad = async () => {
-      // Reset all state
       setImages([])
       setSelectedImage(null)
       setError(null)
       setNotification(null)
       hasLoaded.current = false
 
-      // Clear selected images in parent
       if (onImagesLoaded) {
         onImagesLoaded([])
       }
 
-      // If no product reference, stop here
       if (!productReference) {
         console.log('🔄 Gallery: No product reference, resetting')
         return
       }
 
-      // Update current product ref
       currentProductRef.current = productReference
       console.log(`🔄 Gallery: Product changed to: ${productReference}`)
 
-      // If basePath is loaded, load images for this product
       if (basePath) {
         await loadImagesForProduct(productReference)
       }
@@ -120,7 +114,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({
 
     resetAndLoad()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productReference]) // Only depend on productReference to avoid cycles
+  }, [productReference])
 
   // Load settings to get base path
   useEffect(() => {
@@ -146,13 +140,13 @@ const GalleryView: React.FC<GalleryViewProps> = ({
       loadImagesForProduct(productReference)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [basePath]) // Only depend on basePath
+  }, [basePath])
 
+  // ✅ Handle image click - ONLY shows preview, does NOT select for review
   const handleImageClick = (path: string) => {
-    setSelectedImage(path)
-    if (onImageSelect) {
-      onImageSelect(path)
-    }
+    console.log('🖼️ Image clicked for preview:', path)
+    setSelectedImage(prev => prev === path ? null : path)
+    // ✅ Remove the onImageSelect call here
   }
 
   const handleUploadClick = () => {
@@ -315,7 +309,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({
             {images.map((path, index) => (
               <div
                 key={index}
-                className={`gallery-item ${selectedImage === path ? 'selected' : ''}`}
+                className={`gallery-item ${selectedImage === path ? 'previewing' : ''}`}
                 onClick={() => handleImageClick(path)}
               >
                 <img
@@ -323,11 +317,24 @@ const GalleryView: React.FC<GalleryViewProps> = ({
                   alt={`Product image ${index + 1}`}
                   loading="lazy"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
                   }}
                 />
                 <div className="gallery-item-overlay">
                   <span className="gallery-item-index">{index + 1}</span>
+                  {/* ✅ Add button - this adds to review selection */}
+                  <button
+                    className="gallery-item-select"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (onImageSelect) {
+                        onImageSelect(path)
+                      }
+                    }}
+                    title="Add to review selection"
+                  >
+                    ➕
+                  </button>
                   <button
                     className="gallery-item-delete"
                     onClick={(e) => {
@@ -341,16 +348,38 @@ const GalleryView: React.FC<GalleryViewProps> = ({
               </div>
             ))}
           </div>
+
+          {/* Image Preview Panel */}
           {selectedImage && (
             <div className="gallery-preview">
-              <h4>Selected Image</h4>
-              <img src={imageService.getImageUrl(selectedImage)} alt="Selected" />
-              <button
-                className="gallery-preview-close"
-                onClick={() => setSelectedImage(null)}
-              >
-                Close
-              </button>
+              <h4>Image Preview</h4>
+              <div className="gallery-preview-container">
+                <img
+                  src={imageService.getImageUrl(selectedImage)}
+                  alt="Preview"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
+                  }}
+                />
+              </div>
+              <div className="gallery-preview-actions">
+                <button
+                  className="gallery-preview-select"
+                  onClick={() => {
+                    if (onImageSelect && selectedImage) {
+                      onImageSelect(selectedImage)
+                    }
+                  }}
+                >
+                  📸 Add to Review
+                </button>
+                <button
+                  className="gallery-preview-close"
+                  onClick={() => setSelectedImage(null)}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           )}
         </>
