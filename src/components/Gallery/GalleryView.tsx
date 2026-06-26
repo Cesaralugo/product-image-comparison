@@ -26,6 +26,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({
   const isMounted = useRef(true)
   const hasLoaded = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const currentProductRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     isMounted.current = true
@@ -34,39 +35,17 @@ const GalleryView: React.FC<GalleryViewProps> = ({
     }
   }, [])
 
-  // Clear notification after 3 seconds
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => {
-        setNotification(null)
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [notification])
-
-  // Load settings to get base path
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const settings = await settingsService.getSettings()
-        if (settings?.discovery?.base_path) {
-          setBasePath(settings.discovery.base_path)
-          console.log('📁 Loaded base path from settings:', settings.discovery.base_path)
-        } else {
-          console.warn('⚠️ No base path found in settings. Please set it in Settings → Discovery.')
-        }
-      } catch (err) {
-        console.error('Failed to load settings:', err)
-      }
-    }
-    loadSettings()
-  }, [])
-
   const loadImagesForProduct = useCallback(async (ref: string) => {
-    if (!isMounted.current || !ref) return
+    if (!isMounted.current || !ref) {
+      console.log('⚠️ Gallery: Cannot load images - no ref or unmounted')
+      return
+    }
 
+    console.log(`🔍 Gallery: Loading images for: ${ref}`)
     setLoading(true)
     setError(null)
+    hasLoaded.current = true
+
     try {
       console.log(`🔍 Discovering images for: ${ref} with base path: ${basePath || 'default'}`)
 
@@ -87,36 +66,87 @@ const GalleryView: React.FC<GalleryViewProps> = ({
       if (isMounted.current) {
         const imagePaths = result.map(img => img.path)
         setImages(imagePaths)
-        hasLoaded.current = true
+        setLoading(false)
 
-        // ✅ Call the callback if provided
         if (onImagesLoaded) {
           onImagesLoaded(imagePaths)
         }
 
-        if (imagePaths.length === 0) {
-          setError(`No images found for "${ref}" at path: ${basePath || 'default'}`)
+        if (imagePaths.length === 0 && isMounted.current) {
+          setError(`No images found for "${ref}"`)
         }
       }
     } catch (err) {
       if (isMounted.current) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load images'
         setError(errorMsg)
+        setLoading(false)
         console.error('Error loading images:', err)
       }
-    } finally {
-      if (isMounted.current) {
-        setLoading(false)
+    }
+  }, [basePath, onImagesLoaded])
+
+  // Reset when productReference changes - using a different approach
+  useEffect(() => {
+    // Use a ref to track if we need to reset
+    const resetAndLoad = async () => {
+      // Reset all state
+      setImages([])
+      setSelectedImage(null)
+      setError(null)
+      setNotification(null)
+      hasLoaded.current = false
+
+      // Clear selected images in parent
+      if (onImagesLoaded) {
+        onImagesLoaded([])
+      }
+
+      // If no product reference, stop here
+      if (!productReference) {
+        console.log('🔄 Gallery: No product reference, resetting')
+        return
+      }
+
+      // Update current product ref
+      currentProductRef.current = productReference
+      console.log(`🔄 Gallery: Product changed to: ${productReference}`)
+
+      // If basePath is loaded, load images for this product
+      if (basePath) {
+        await loadImagesForProduct(productReference)
       }
     }
-  }, [basePath, onImagesLoaded]) // Add onImagesLoaded to dependencies
 
-  // Reload when productReference changes or basePath changes
+    resetAndLoad()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productReference]) // Only depend on productReference to avoid cycles
+
+  // Load settings to get base path
   useEffect(() => {
-    if (productReference && basePath && !hasLoaded.current) {
+    const loadSettings = async () => {
+      try {
+        const settings = await settingsService.getSettings()
+        if (settings?.discovery?.base_path) {
+          setBasePath(settings.discovery.base_path)
+          console.log('📁 Loaded base path from settings:', settings.discovery.base_path)
+        } else {
+          console.warn('⚠️ No base path found in settings. Please set it in Settings → Discovery.')
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      }
+    }
+    loadSettings()
+  }, [])
+
+  // Load images when basePath loads and we have a product reference
+  useEffect(() => {
+    if (productReference && basePath && !hasLoaded.current && !loading) {
       loadImagesForProduct(productReference)
     }
-  }, [productReference, basePath, loadImagesForProduct])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basePath]) // Only depend on basePath
 
   const handleImageClick = (path: string) => {
     setSelectedImage(path)
@@ -141,13 +171,9 @@ const GalleryView: React.FC<GalleryViewProps> = ({
     setNotification(null)
 
     try {
-      console.log('📤 [DEBUG] Starting upload...')
-      console.log('📤 Product reference:', productReference)
-      console.log('📤 File name:', file.name)
-      console.log('📤 File size:', file.size)
-      console.log('📤 File type:', file.type)
+      console.log(`📤 Uploading image for product: ${productReference}`)
+      console.log(`📤 File: ${file.name} (${file.size} bytes)`)
 
-      // Validate file
       if (file.size > 10 * 1024 * 1024) {
         throw new Error('File size exceeds 10MB limit')
       }
@@ -155,7 +181,6 @@ const GalleryView: React.FC<GalleryViewProps> = ({
         throw new Error('File must be an image')
       }
 
-      console.log('📤 [DEBUG] Calling uploadProductImage...')
       const result = await imageService.uploadProductImage(
         productReference,
         file,
@@ -164,32 +189,19 @@ const GalleryView: React.FC<GalleryViewProps> = ({
         }
       )
 
-      console.log('✅ [DEBUG] Upload successful:', result)
+      console.log('✅ Upload successful:', result)
 
-      // Refresh images
-      console.log('📤 [DEBUG] Refreshing images from folder...')
-      const refreshedImages = await imageService.discoverImages(
-        productReference,
-        'folder',
-        basePath || undefined
-      )
-
-      console.log('📤 [DEBUG] Found images:', refreshedImages.length)
-      const imagePaths = refreshedImages.map(img => img.path)
-
-      console.log('📤 [DEBUG] Setting images state...')
-      setImages(imagePaths)
-      hasLoaded.current = true
+      // Refresh images after upload
+      hasLoaded.current = false
+      await loadImagesForProduct(productReference)
 
       setNotification('✅ Image uploaded successfully!')
 
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-
-      console.log('✅ [DEBUG] Upload complete successfully')
     } catch (err) {
-      console.error('❌ [DEBUG] Upload failed:', err)
+      console.error('❌ Upload failed:', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to upload image'
 
       if (errorMsg.includes('base path not configured')) {
@@ -202,14 +214,13 @@ const GalleryView: React.FC<GalleryViewProps> = ({
         setError(`❌ ${errorMsg}`)
       }
     } finally {
-      console.log('📤 [DEBUG] Setting isUploading to false')
       setIsUploading(false)
     }
   }
 
   const handleRefresh = () => {
-    hasLoaded.current = false
     if (productReference) {
+      hasLoaded.current = false
       loadImagesForProduct(productReference)
     }
   }
@@ -221,6 +232,16 @@ const GalleryView: React.FC<GalleryViewProps> = ({
         setSelectedImage(null)
       }
     }
+  }
+
+  // If no product reference, show empty state
+  if (!productReference) {
+    return (
+      <div className="gallery-empty">
+        <p>📷 No product selected</p>
+        <p className="gallery-hint">Please select a product from the dropdown above</p>
+      </div>
+    )
   }
 
   if (loading) {
@@ -238,39 +259,6 @@ const GalleryView: React.FC<GalleryViewProps> = ({
         <p className="gallery-hint">
           💡 Make sure you've set the Image Base Path in Settings → Discovery
         </p>
-      </div>
-    )
-  }
-
-  if (images.length === 0) {
-    return (
-      <div className="gallery-empty">
-        <p>📷 No images available</p>
-        <p className="gallery-hint">
-          💡 Try:
-          <br />
-          1. Go to Settings → Discovery and set the Image Base Path
-          <br />
-          2. Make sure images are in folders named after product references
-          <br />
-          3. Click "Upload Image" to add your own images
-        </p>
-        {basePath && (
-          <p className="gallery-path-info">
-            📁 Current base path: <code>{basePath}</code>
-          </p>
-        )}
-        <div className="gallery-empty-actions">
-          <button onClick={handleRefresh}>🔄 Refresh</button>
-          <button onClick={handleUploadClick}>📤 Upload Image</button>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileUpload}
-          style={{ display: 'none' }}
-        />
       </div>
     )
   }
@@ -306,48 +294,66 @@ const GalleryView: React.FC<GalleryViewProps> = ({
         <span className="image-count">{images.length} images</span>
       </div>
 
-      <div className="gallery-grid">
-        {images.map((path, index) => (
-          <div
-            key={index}
-            className={`gallery-item ${selectedImage === path ? 'selected' : ''}`}
-            onClick={() => handleImageClick(path)}
-          >
-            <img
-              src={imageService.getImageUrl(path)}
-              alt={`Product image ${index + 1}`}
-              loading="lazy"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
-              }}
-            />
-            <div className="gallery-item-overlay">
-              <span className="gallery-item-index">{index + 1}</span>
-              <button
-                className="gallery-item-delete"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleDeleteImage(path)
-                }}
+      {images.length === 0 ? (
+        <div className="gallery-empty">
+          <p>📷 No images available</p>
+          <p className="gallery-hint">
+            💡 Tips:
+            <br />
+            1. Set the Image Base Path in Settings → Discovery
+            <br />
+            2. Create folders named after product references (e.g., REF-1001/)
+            <br />
+            3. Place images in those folders
+            <br />
+            4. Click "Refresh" to reload
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="gallery-grid">
+            {images.map((path, index) => (
+              <div
+                key={index}
+                className={`gallery-item ${selectedImage === path ? 'selected' : ''}`}
+                onClick={() => handleImageClick(path)}
               >
-                ×
+                <img
+                  src={imageService.getImageUrl(path)}
+                  alt={`Product image ${index + 1}`}
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
+                  }}
+                />
+                <div className="gallery-item-overlay">
+                  <span className="gallery-item-index">{index + 1}</span>
+                  <button
+                    className="gallery-item-delete"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteImage(path)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {selectedImage && (
+            <div className="gallery-preview">
+              <h4>Selected Image</h4>
+              <img src={imageService.getImageUrl(selectedImage)} alt="Selected" />
+              <button
+                className="gallery-preview-close"
+                onClick={() => setSelectedImage(null)}
+              >
+                Close
               </button>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {selectedImage && (
-        <div className="gallery-preview">
-          <h4>Selected Image</h4>
-          <img src={imageService.getImageUrl(selectedImage)} alt="Selected" />
-          <button
-            className="gallery-preview-close"
-            onClick={() => setSelectedImage(null)}
-          >
-            Close
-          </button>
-        </div>
+          )}
+        </>
       )}
     </div>
   )

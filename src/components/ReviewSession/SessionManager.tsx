@@ -162,11 +162,24 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     }
   }
 
-  const handleSelectSession = (sessionId: string) => {
+  const handleSelectSession = async (sessionId: string) => {
     setSelectedSessionId(sessionId)
     const session = sessions.find(s => s.id === sessionId)
     if (session) {
-      const { startSession } = useAppStore.getState()
+      const { startSession, loadProducts } = useAppStore.getState()
+
+      // Load products for this session
+      if (session.productReferences && session.productReferences.length > 0) {
+        try {
+          const { getProductsByReference } = await import('@/services/api')
+          const products = await getProductsByReference(session.productReferences)
+          loadProducts(products)
+          console.log('✅ Loaded products for session:', products)
+        } catch (err) {
+          console.error('Failed to load products:', err)
+        }
+      }
+
       startSession(session)
       if (onSessionChange) {
         onSessionChange(session)
@@ -236,13 +249,21 @@ const SessionManager: React.FC<SessionManagerProps> = ({
 
   // Get product details for a session
   const getProductDetails = (session: ReviewSession) => {
+    console.log('🔍 Getting product details for session:', session.id)
+    console.log('📦 Session product references:', session.productReferences)
+    console.log('📦 Products in store:', products)
+
     if (!session.productReferences || session.productReferences.length === 0) {
+      console.log('⚠️ No product references found in session')
       return []
     }
-    // Try to get products from the store
+
+    // Get products from the store
     const sessionProducts = products.filter(p =>
       session.productReferences?.includes(p.reference)
     )
+
+    console.log('📦 Found products for session:', sessionProducts)
     return sessionProducts
   }
 

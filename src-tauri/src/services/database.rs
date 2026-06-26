@@ -320,6 +320,8 @@ impl Database {
             let mut session = row.map_err(|e| format!("Failed to read session row: {}", e))?;
             // ✅ Get actual product references
             session.product_references = Self::get_session_products(conn, &session.id)?;
+            let reviews = Self::get_session_reviews(conn, &session.id)?;
+            session.reviewed_count = reviews.len();
             println!("✅ [DEBUG] Session {} has {} products: {:?}",
                 session.id,
                 session.product_references.len(),

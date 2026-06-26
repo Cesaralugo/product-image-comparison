@@ -1,70 +1,144 @@
+/* src/components/Settings/SettingsPanel.css */
 .settings-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #2d3748;
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .settings-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--surface-color);
+  gap: 4px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  overflow-x: auto;
 }
 
-.tab {
-  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
-  border: none;
+.settings-tabs button {
+  padding: 10px 20px;
   background: none;
-  cursor: pointer;
-  color: var(--text-secondary);
+  border: none;
   border-bottom: 2px solid transparent;
-  transition: all var(--transition-duration);
+  color: #718096;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
-.tab:hover {
-  color: var(--text-primary);
+.settings-tabs button:hover {
+  color: #2d3748;
+  background: #f7fafc;
 }
 
-.tab.active {
-  color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
+.settings-tabs button.active {
+  color: #4299e1;
+  border-bottom-color: #4299e1;
 }
 
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: calc(var(--spacing-unit) * 2);
+  padding: 8px 0;
+  min-height: 0;
 }
 
-.settings-error,
-.settings-empty {
-  text-align: center;
-  padding: 60px 20px;
-  background: #fff5f5;
+.settings-section {
+  background: white;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  border: 1px solid #fc8181;
+  padding: 24px;
 }
 
-.settings-error button,
-.settings-empty button {
-  margin-top: 16px;
-  padding: 8px 20px;
-  background: #4299e1;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+.settings-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #2d3748;
+}
+
+.setting-group {
+  margin-bottom: 16px;
+}
+
+.setting-group label {
+  display: block;
   font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 4px;
+  font-size: 14px;
 }
 
-.settings-error button:hover,
-.settings-empty button:hover {
-  background: #3182ce;
+.setting-group input[type="text"],
+.setting-group input[type="number"],
+.setting-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  max-width: 100%;
 }
 
-.settings-loading {
-  text-align: center;
-  padding: 60px 20px;
-  color: #718096;
+.setting-group input:focus,
+.setting-group select:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+}
+
+.setting-group input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.setting-help {
+  font-size: 13px;
+  color: #4a5568;
+  margin: 4px 0 0 0;
+  padding: 8px 12px;
+  background: #f7fafc;
+  border-radius: 4px;
+  border-left: 3px solid #4299e1;
+  word-break: break-all;
+}
+
+.setting-help code {
+  background: #edf2f7;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #2d3748;
+  word-break: break-all;
 }
 
 .settings-success {
@@ -87,6 +161,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .btn-save-settings:hover:not(:disabled) {
@@ -97,4 +172,78 @@
 .btn-save-settings:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .settings-panel {
+    padding: 12px;
+  }
+
+  .settings-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .settings-header h2 {
+    font-size: 20px;
+  }
+
+  .settings-actions {
+    flex-wrap: wrap;
+  }
+
+  .settings-tabs button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .settings-section {
+    padding: 16px;
+  }
+
+  .setting-group input[type="text"],
+  .setting-group input[type="number"],
+  .setting-group select {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-panel {
+    padding: 8px;
+  }
+
+  .settings-tabs {
+    gap: 2px;
+  }
+
+  .settings-tabs button {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .settings-section {
+    padding: 12px;
+  }
+
+  .settings-section h3 {
+    font-size: 16px;
+  }
+
+  .setting-group label {
+    font-size: 13px;
+  }
+
+  .btn-save-settings {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }

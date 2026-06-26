@@ -36,8 +36,10 @@ pub async fn save_review(
 
     // Update session progress
     if let Some(mut session) = Database::get_review_session(&conn, &review_result.session_id)? {
-        println!("✅ [DEBUG] Found session, current reviewed_count: {}", session.reviewed_count);
-        session.reviewed_count += 1;
+        // Count unique products that have reviews
+        let unique_reviews = Database::get_session_reviews(&conn, &review_result.session_id)?;
+        let reviewed_count = unique_reviews.len(); // Count unique products reviewed
+        session.reviewed_count = reviewed_count;
         session.last_updated = chrono::Utc::now().to_rfc3339();
 
         if session.reviewed_count >= session.product_count {
@@ -45,10 +47,7 @@ pub async fn save_review(
         }
 
         Database::update_review_session(&conn, &session)?;
-        println!("✅ [DEBUG] Session progress updated to {}", session.reviewed_count);
-    } else {
-        println!("❌ [DEBUG] Session not found: {}", review_result.session_id);
-        return Err(format!("Session not found: {}", review_result.session_id));
+        println!("✅ [DEBUG] Session progress updated to {} reviewed products", session.reviewed_count);
     }
 
     Ok(json!({

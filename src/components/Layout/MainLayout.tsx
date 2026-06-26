@@ -203,8 +203,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       case 'gallery': {
         const productRefs = currentSession?.productReferences || []
-        const currentProduct = selectedProduct || productRefs[0] || ''
-        const productDetails = getProductDetails(currentProduct)
+        // ✅ Only set currentProduct if there are product references
+        const currentProduct = (productRefs.length > 0 && selectedProduct && productRefs.includes(selectedProduct))
+          ? selectedProduct
+          : productRefs[0] || ''
+
+        const productDetails = currentProduct ? getProductDetails(currentProduct) : null
+
+        // Use session ID and product as key to force re-render
+        const galleryKey = `${currentSession?.id || 'no-session'}-${currentProduct || 'no-product'}`
 
         return (
           <div className="page-content">
@@ -214,13 +221,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {currentSession && (
               <div className="session-info-banner">
                 <span>📋 Session: {currentSession.id.substring(0, 12)}...</span>
-                <span>📦 Products: {currentSession.productCount}</span>
-                <span>✅ Reviewed: {currentSession.reviewedCount}</span>
+                <span>📦 Products: {currentSession.productCount || 0}</span>
+                <span>✅ Reviewed: {currentSession.reviewedCount || 0}</span>
               </div>
             )}
 
-            {/* Product selector */}
-            {productRefs.length > 0 && (
+            {/* Product selector - only show if there are products */}
+            {productRefs.length > 0 ? (
               <div className="gallery-controls">
                 <label htmlFor="product-select">Select Product:</label>
                 <select
@@ -239,10 +246,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </select>
                 <span className="product-count">{productRefs.length} products</span>
               </div>
+            ) : (
+              <div className="gallery-controls empty">
+                <span className="empty-message">📭 No products in this session</span>
+              </div>
             )}
 
-            {/* Product Metadata */}
-            {productDetails && (
+            {/* Product Metadata - only show if we have a product */}
+            {productDetails && currentProduct && (
               <div className="product-metadata">
                 <h3>📋 Product Details</h3>
                 <div className="metadata-grid">
@@ -270,10 +281,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </div>
             )}
 
-            {/* Gallery View */}
+            {/* Gallery View - only show if we have a product */}
             {currentProduct ? (
               <GalleryView
-                key={currentProduct}
+                key={galleryKey}
                 productReference={currentProduct}
                 onImageSelect={handleImageSelect}
                 onImagesLoaded={handleImagesLoaded}
@@ -281,11 +292,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             ) : (
               <div className="gallery-empty">
                 <p>📷 No product selected</p>
-                <p className="gallery-hint">Please select a product from the dropdown above</p>
+                <p className="gallery-hint">
+                  {productRefs.length === 0
+                    ? 'This session has no products. Import products from CSV first.'
+                    : 'Please select a product from the dropdown above'
+                  }
+                </p>
               </div>
             )}
 
-            {/* Review Controls */}
+            {/* Review Controls - only show if we have a product */}
             {currentProduct && (
               <div className="review-controls">
                 <h3>📝 Review Product: {currentProduct}</h3>
