@@ -25,7 +25,16 @@ export const getReviewSession = async (sessionId: string): Promise<ReviewSession
   console.log('📋 Raw session from backend:', result.session)
 
   if (!result.session) return null
-  return result.session
+
+  return {
+    id: result.session.id,
+    startedAt:  result.session.startedAt,
+    lastUpdated:  result.session.lastUpdated,
+    productCount:  result.session.productCount || 0,
+    reviewedCount:  result.session.reviewedCount || 0,
+    status: result.session.status || 'active',
+    productReferences:  result.session.productReferences || []
+  }
 }
 
 export const saveReview = async (review: ReviewResult): Promise<void> => {
@@ -49,12 +58,12 @@ export const getAllSessions = async (): Promise<ReviewSession[]> => {
 
   const mapped = result.sessions.map(s => ({
     id: s.id,
-    startedAt: s.startedAt || s.startedAt,
-    lastUpdated: s.lastUpdated || s.lastUpdated,
-    productCount: s.productCount || s.productCount || 0,
-    reviewedCount: s.reviewedCount || s.reviewedCount || 0,
+    startedAt: s.startedAt,
+    lastUpdated: s.lastUpdated,
+    productCount: s.productCount || 0,
+    reviewedCount: s.reviewedCount || 0,
     status: s.status || 'active',
-    productReferences: s.productReferences || s.productReferences || []
+    productReferences: s.productReferences || []
   }))
 
   console.log('📋 [DEBUG] Mapped sessions:', mapped)

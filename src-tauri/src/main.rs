@@ -38,7 +38,7 @@ use commands::{
     preview_report,
     calculate_layout,
     get_page_items,
-    // get_product_details, // ❌ REMOVE THIS
+    get_products_by_reference,  // ✅ Add this
 };
 
 #[derive(Clone)]
@@ -119,7 +119,9 @@ fn main() {
             // Layout
             calculate_layout,
             get_page_items,
-            // get_product_details, // ❌ REMOVE THIS
+
+            // Products
+            get_products_by_reference,  // ✅ Add this
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

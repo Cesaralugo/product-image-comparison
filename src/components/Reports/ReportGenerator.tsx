@@ -1,5 +1,5 @@
 // src/components/Reports/ReportGenerator.tsx
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'  // Remove useRef
 import type { ReportFormat, ReportPreview } from '@/types/report'
 import { useReportGenerator } from '@/hooks/useReportGenerator'
 import './ExportOptions.css'
@@ -35,10 +35,9 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     reset,
   } = useReportGenerator({ sessionId, autoLoad: showPreview })
 
-  // Store preview data when it loads - use a different approach to avoid setState in effect
+  // Store preview data when it loads
   useEffect(() => {
     if (preview) {
-      // Use a timeout to avoid direct setState in effect
       const timer = setTimeout(() => {
         setPreviewData(preview)
       }, 0)
@@ -106,7 +105,8 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             <thead>
               <tr>
                 <th>Product Reference</th>
-                <th>Product Description</th>  {/* ✅ Added Description column */}
+                <th>Product Description</th>
+                <th>Metadata</th>
                 <th>Candidates</th>
                 <th>Selected</th>
                 <th>Uploaded</th>
@@ -120,7 +120,19 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
               {previewData.reviews.map((review, index) => (
                 <tr key={index}>
                   <td><strong>{review.product_reference}</strong></td>
-                  <td className="csv-description">{review.product_description || '-'}</td>  {/* ✅ Added Description */}
+                  <td className="csv-description">{review.product_description || '-'}</td>
+                  <td className="csv-metadata">
+                    {review.product_metadata && Object.keys(review.product_metadata).length > 0 ? (
+                      <span className="metadata-preview">
+                        {Object.entries(review.product_metadata).slice(0, 2).map(([k, v]) => (
+                          <span key={k} className="metadata-tag">{k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+                        ))}
+                        {Object.keys(review.product_metadata).length > 2 && (
+                          <span className="metadata-more">+{Object.keys(review.product_metadata).length - 2} more</span>
+                        )}
+                      </span>
+                    ) : '-'}
+                  </td>
                   <td>{review.candidates_count}</td>
                   <td>{review.selected_count}</td>
                   <td>{review.uploaded_count}</td>
@@ -192,6 +204,29 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                     {getStatus(review)}
                   </span>
                 </div>
+
+                {/* Product Description */}
+                {review.product_description && (
+                  <div className="pdf-review-description">
+                    <span className="label">Description:</span>
+                    <span>{review.product_description}</span>
+                  </div>
+                )}
+
+                {/* Product Metadata */}
+                {review.product_metadata && Object.keys(review.product_metadata).length > 0 && (
+                  <div className="pdf-review-metadata">
+                    <span className="label">Metadata:</span>
+                    <div className="metadata-tags">
+                      {Object.entries(review.product_metadata).map(([key, value]) => (
+                        <span key={key} className="metadata-tag">
+                          {key}: {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="pdf-review-details">
                   <span>📷 {review.candidates_count} candidates → {review.selected_count} selected</span>
                   <span>⏱ {review.time_to_decide_seconds.toFixed(1)}s</span>

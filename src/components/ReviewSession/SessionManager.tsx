@@ -7,7 +7,7 @@ import Button from '@/components/Common/Button'
 import SessionProgress from './SessionProgress'
 import { useFileSystem } from '@/hooks/useFileSystem'
 import { useAppStore } from '@/state/store'
-import { createReviewSession, getAllSessions } from '@/services/api'
+import { createReviewSession, getAllSessions, getProductsByReference } from '@/services/api'
 import type { ReviewSession, Product } from '@/types'
 import './SessionManager.css'
 
@@ -27,7 +27,9 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
-  const { navigateTo, deleteSession, loadProducts, products } = useAppStore()
+  const [expandedProductMetadata, setExpandedProductMetadata] = useState<string | null>(null)
+  const [sessionProducts, setSessionProducts] = useState<Record<string, Product[]>>({})
+  const { navigateTo, deleteSession, loadProducts } = useAppStore()
   const { pickSaveFile, writeFile } = useFileSystem()
 
   // Load all sessions on mount
@@ -37,6 +39,22 @@ const SessionManager: React.FC<SessionManagerProps> = ({
         const result = await getAllSessions()
         console.log('📋 Sessions loaded:', result)
         setSessions(result)
+
+        // Load products for all sessions
+        for (const session of result) {
+          if (session.productReferences && session.productReferences.length > 0) {
+            try {
+              const products = await getProductsByReference(session.productReferences)
+              setSessionProducts(prev => ({
+                ...prev,
+                [session.id]: products
+              }))
+              console.log(`✅ Loaded ${products.length} products for session ${session.id}`)
+            } catch (err) {
+              console.error(`Failed to load products for session ${session.id}:`, err)
+            }
+          }
+        }
       } catch (err) {
         console.error('Failed to load sessions:', err)
         setNotification({ type: 'error', message: 'Failed to load sessions' })
@@ -44,6 +62,64 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     }
     loadAllSessions()
   }, [])
+
+  // Load products for the selected session when it changes
+  useEffect(() => {
+    const loadSessionProducts = async () => {
+      if (selectedSessionId) {
+        const session = sessions.find(s => s.id === selectedSessionId)
+        if (session?.productReferences && session.productReferences.length > 0) {
+          if (!sessionProducts[selectedSessionId]) {
+            try {
+              const products = await getProductsByReference(session.productReferences)
+              setSessionProducts(prev => ({
+                ...prev,
+                [selectedSessionId]: products
+              }))
+              loadProducts(products)
+              console.log(`✅ Loaded ${products.length} products for session ${selectedSessionId}`)
+            } catch (err) {
+              console.error(`Failed to load products for session ${selectedSessionId}:`, err)
+            }
+          } else {
+            loadProducts(sessionProducts[selectedSessionId])
+          }
+        }
+      }
+    }
+    loadSessionProducts()
+  }, [selectedSessionId, sessions, sessionProducts, loadProducts])
+
+  // Load products when a session is expanded
+  const loadProductsForSession = async (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId)
+    if (!session?.productReferences || session.productReferences.length === 0) {
+      console.log('⚠️ No product references found for session:', sessionId)
+      return
+    }
+
+    if (sessionProducts[sessionId]) {
+      console.log('📦 Products already cached for session:', sessionId)
+      console.log('📦 Cached products with metadata:', sessionProducts[sessionId])
+      return
+    }
+
+    try {
+      console.log(`📦 Loading products for expanded session: ${sessionId}`)
+      const products = await getProductsByReference(session.productReferences)
+      console.log(`✅ Loaded ${products.length} products with metadata:`, products)
+      products.forEach(p => {
+        console.log(`📦 ${p.reference} metadata:`, p.metadata)
+      })
+      setSessionProducts(prev => ({
+        ...prev,
+        [sessionId]: products
+      }))
+      loadProducts(products)
+    } catch (err) {
+      console.error('Failed to load products for expanded session:', err)
+    }
+  }
 
   // Clear notification after 3 seconds
   useEffect(() => {
@@ -55,10 +131,14 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     }
   }, [notification])
 
+  const toggleProductMetadata = (productReference: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setExpandedProductMetadata(expandedProductMetadata === productReference ? null : productReference)
+  }
+
   const handleImportResult = (result: { products: Product[]; count: number; session?: ReviewSession }) => {
     console.log('📦 Import result:', result)
 
-    // Load products into the store
     if (result.products && result.products.length > 0) {
       loadProducts(result.products)
       console.log('✅ Products loaded into store:', result.products)
@@ -66,26 +146,37 @@ const SessionManager: React.FC<SessionManagerProps> = ({
 
     if (result.session) {
       console.log('✅ Session from backend:', result.session)
-      const session = result.session
+      const newSession = result.session
       const { startSession } = useAppStore.getState()
 
       setSessions(prev => {
-        const exists = prev.some(s => s.id === session.id)
+        const exists = prev.some(s => s.id === newSession.id)
         if (exists) {
-          return prev.map(s => s.id === session.id ? session : s)
+          return prev.map(s => s.id === newSession.id ? newSession : s)
         }
-        return [session, ...prev]
+        return [newSession, ...prev]
       })
 
-      setSelectedSessionId(session.id)
-      startSession(session)
+      if (result.products) {
+        setSessionProducts(prev => ({
+          ...prev,
+          [newSession.id]: result.products
+        }))
+        loadProducts(result.products)
+      }
+
+      setSelectedSessionId(newSession.id)
+      startSession(newSession)
 
       setNotification({
         type: 'success',
-        message: `✅ Successfully imported ${result.count} products into session ${session.id.substring(0, 8)}...`
+        message: `✅ Successfully imported ${result.count} products into session ${newSession.id.substring(0, 8)}...`
       })
+
+      if (onSessionChange) {
+        onSessionChange(newSession)
+      }
     } else {
-      // If no session returned, create one
       const createAndAddSession = async () => {
         try {
           const newSession = await createReviewSession(result.count)
@@ -94,6 +185,10 @@ const SessionManager: React.FC<SessionManagerProps> = ({
           if (result.products && result.products.length > 0) {
             const productRefs = result.products.map(p => p.reference || p.id)
             newSession.productReferences = productRefs
+            setSessionProducts(prev => ({
+              ...prev,
+              [newSession.id]: result.products
+            }))
           }
 
           setSessions(prev => [newSession, ...prev])
@@ -166,17 +261,23 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     setSelectedSessionId(sessionId)
     const session = sessions.find(s => s.id === sessionId)
     if (session) {
-      const { startSession, loadProducts } = useAppStore.getState()
+      const { startSession } = useAppStore.getState()
 
-      // Load products for this session
       if (session.productReferences && session.productReferences.length > 0) {
-        try {
-          const { getProductsByReference } = await import('@/services/api')
-          const products = await getProductsByReference(session.productReferences)
-          loadProducts(products)
-          console.log('✅ Loaded products for session:', products)
-        } catch (err) {
-          console.error('Failed to load products:', err)
+        if (!sessionProducts[sessionId]) {
+          try {
+            const products = await getProductsByReference(session.productReferences)
+            setSessionProducts(prev => ({
+              ...prev,
+              [sessionId]: products
+            }))
+            loadProducts(products)
+            console.log(`✅ Loaded products for session ${sessionId}`)
+          } catch (err) {
+            console.error('Failed to load products:', err)
+          }
+        } else {
+          loadProducts(sessionProducts[sessionId])
         }
       }
 
@@ -213,6 +314,12 @@ const SessionManager: React.FC<SessionManagerProps> = ({
       const result = await getAllSessions()
       setSessions(result)
 
+      setSessionProducts(prev => {
+        const newState = { ...prev }
+        delete newState[sessionId]
+        return newState
+      })
+
       if (selectedSessionId === sessionId) {
         setSelectedSessionId(null)
       }
@@ -233,7 +340,12 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   }
 
   const toggleExpand = (sessionId: string) => {
-    setExpandedSession(expandedSession === sessionId ? null : sessionId)
+    const newExpanded = expandedSession === sessionId ? null : sessionId
+    setExpandedSession(newExpanded)
+
+    if (newExpanded === sessionId) {
+      loadProductsForSession(sessionId)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -247,24 +359,19 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     }
   }
 
-  // Get product details for a session
   const getProductDetails = (session: ReviewSession) => {
     console.log('🔍 Getting product details for session:', session.id)
     console.log('📦 Session product references:', session.productReferences)
-    console.log('📦 Products in store:', products)
+    console.log('📦 Cached products:', sessionProducts[session.id])
 
     if (!session.productReferences || session.productReferences.length === 0) {
       console.log('⚠️ No product references found in session')
       return []
     }
 
-    // Get products from the store
-    const sessionProducts = products.filter(p =>
-      session.productReferences?.includes(p.reference)
-    )
-
-    console.log('📦 Found products for session:', sessionProducts)
-    return sessionProducts
+    const products = sessionProducts[session.id] || []
+    console.log('📦 Found products for session:', products)
+    return products
   }
 
   return (
@@ -351,7 +458,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({
           </div>
         ) : (
           sessions.map((s: ReviewSession) => {
-            const sessionProducts = getProductDetails(s)
+            const sessionProductsList = getProductDetails(s)
             const isExpanded = expandedSession === s.id
 
             return (
@@ -370,7 +477,6 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                   <p>📦 Products: {s.productCount || 0} | ✅ Reviewed: {s.reviewedCount || 0}</p>
                   <small>🕐 Started: {formatDate(s.startedAt)}</small>
 
-                  {/* Session preview with product info */}
                   <div className="session-preview">
                     <div
                       className="session-preview-toggle"
@@ -382,7 +488,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                       <span>{isExpanded ? '▼' : '▶'} {isExpanded ? 'Hide' : 'Show'} Product Details</span>
                     </div>
 
-                    {isExpanded && sessionProducts.length > 0 && (
+                    {isExpanded && sessionProductsList.length > 0 && (
                       <div className="session-products-preview">
                         <div className="products-table">
                           <div className="table-header">
@@ -391,38 +497,63 @@ const SessionManager: React.FC<SessionManagerProps> = ({
                             <span className="col-status">Status</span>
                             <span className="col-actions">Actions</span>
                           </div>
-                          {sessionProducts.map((product) => (
-                            <div key={product.reference} className="table-row">
-                              <span className="col-reference">
-                                <strong>{product.reference}</strong>
-                              </span>
-                              <span className="col-description">
-                                {product.description || 'No description'}
-                              </span>
-                              <span className="col-status">
-                                <span className={`status-badge ${product.status || 'pending'}`}>
-                                  {product.status || 'pending'}
+                          {sessionProductsList.map((product) => (
+                            <React.Fragment key={product.reference}>
+                              <div className="table-row">
+                                <span className="col-reference">
+                                  <strong>{product.reference}</strong>
                                 </span>
-                              </span>
-                              <span className="col-actions">
-                                <Button
-                                  variant="primary"
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleViewGallery(product.reference)
-                                  }}
-                                >
-                                  🖼️ View
-                                </Button>
-                              </span>
-                            </div>
+                                <span className="col-description">
+                                  {product.description || 'No description'}
+                                </span>
+                                <span className="col-status">
+                                  <span className={`status-badge ${product.status || 'pending'}`}>
+                                    {product.status || 'pending'}
+                                  </span>
+                                </span>
+                                <span className="col-actions">
+                                  <Button
+                                    variant="primary"
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleViewGallery(product.reference)
+                                    }}
+                                  >
+                                    🖼️ View
+                                  </Button>
+                                  {product.metadata && Object.keys(product.metadata).length > 0 && (
+                                    <Button
+                                      variant="secondary"
+                                      size="small"
+                                      onClick={(e) => toggleProductMetadata(product.reference, e)}
+                                    >
+                                      {expandedProductMetadata === product.reference ? '📖 Hide Metadata' : '📖 Show Metadata'}
+                                    </Button>
+                                  )}
+                                </span>
+                              </div>
+                              {expandedProductMetadata === product.reference && product.metadata && (
+                                <div className="table-row-metadata">
+                                  <div className="metadata-fields">
+                                    {Object.entries(product.metadata).map(([key, value]) => (
+                                      <div key={key} className="metadata-field">
+                                        <span className="metadata-key">{key}:</span>
+                                        <span className="metadata-value">
+                                          {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </React.Fragment>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {isExpanded && sessionProducts.length === 0 && (
+                    {isExpanded && sessionProductsList.length === 0 && (
                       <div className="session-products-empty">
                         <p>📭 No product details available</p>
                       </div>

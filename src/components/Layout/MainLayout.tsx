@@ -265,17 +265,66 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     <label>Description:</label>
                     <span>{productDetails.description || 'No description'}</span>
                   </div>
-                  {productDetails.metadata && (
-                    <div className="metadata-item full-width">
-                      <label>Metadata:</label>
-                      <pre>{JSON.stringify(productDetails.metadata, null, 2)}</pre>
-                    </div>
-                  )}
                   <div className="metadata-item">
                     <label>Status:</label>
                     <span className={`status-badge ${productDetails.status || 'pending'}`}>
                       {productDetails.status || 'pending'}
                     </span>
+                  </div>
+
+                  {/* ✅ Metadata - properly parsed */}
+                  <div className="metadata-item full-width">
+                    <label>Product Metadata:</label>
+                    <div className="metadata-content">
+                      {productDetails.metadata ? (
+                        // Check if metadata is an object (parsed JSON)
+                        typeof productDetails.metadata === 'object' &&
+                        !Array.isArray(productDetails.metadata) &&
+                        productDetails.metadata !== null ? (
+                          <div className="metadata-fields">
+                            {Object.entries(productDetails.metadata).map(([key, value]) => (
+                              <div key={key} className="metadata-field">
+                                <span className="metadata-key">{key}:</span>
+                                <span className="metadata-value">
+                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          // If metadata is a string, try to parse it
+                          typeof productDetails.metadata === 'string' ? (
+                            (() => {
+                              try {
+                                const parsed = JSON.parse(productDetails.metadata);
+                                if (typeof parsed === 'object' && parsed !== null) {
+                                  return (
+                                    <div className="metadata-fields">
+                                      {Object.entries(parsed).map(([key, value]) => (
+                                        <div key={key} className="metadata-field">
+                                          <span className="metadata-key">{key}:</span>
+                                          <span className="metadata-value">
+                                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                              } catch (e) {
+                                // Not valid JSON, show as raw string
+                                return <span className="metadata-raw">{productDetails.metadata}</span>;
+                              }
+                              return <span className="metadata-raw">{productDetails.metadata}</span>;
+                            })()
+                          ) : (
+                            <span className="no-metadata">No metadata available</span>
+                          )
+                        )
+                      ) : (
+                        <span className="no-metadata">No metadata available</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

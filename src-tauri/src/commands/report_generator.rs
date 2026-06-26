@@ -370,6 +370,7 @@ fn format_report_for_preview(data: &ReportData) -> serde_json::Value {
             "review_id": r.id,
             "product_reference": r.product_reference,
             "product_description": r.product_description.clone().unwrap_or_else(|| "".to_string()),  // ✅ Add this
+            "product_metadata": r.product_metadata.clone().unwrap_or_else(|| json!({})),
             "candidates_count": r.candidates_presented.len(),
             "selected_count": r.selected_images.len(),
             "uploaded_count": r.uploaded_replacements.len(),

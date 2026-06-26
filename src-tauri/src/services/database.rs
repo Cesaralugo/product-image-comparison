@@ -1,7 +1,6 @@
 // src-tauri/src/services/database.rs
 use crate::models::Product;
 use crate::models::review::{ReviewResult, ReviewSession};
-use crate::config;
 use rusqlite::{params, Connection};
 
 pub struct Database;
@@ -190,12 +189,14 @@ impl Database {
     }
 
     /// Fetches products whose `reference` is in the given list.
-    #[allow(dead_code)]
     pub fn get_products_by_reference(
         conn: &Connection,
         references: &[String],
     ) -> Result<Vec<Product>, String> {
+        println!("🔍 [DEBUG] get_products_by_reference called with: {:?}", references);
+
         if references.is_empty() {
+            println!("⚠️ [DEBUG] Empty references list");
             return Ok(vec![]);
         }
 
@@ -207,10 +208,11 @@ impl Database {
 
         let query = format!(
             "SELECT id, reference, description, metadata, status
-             FROM products
-             WHERE reference IN ({})",
+            FROM products
+            WHERE reference IN ({})",
             placeholders
         );
+        println!("📋 [DEBUG] Query: {}", query);
 
         let mut stmt = conn
             .prepare(&query)
@@ -240,6 +242,8 @@ impl Database {
         for row in rows {
             products.push(row.map_err(|e| format!("Failed to read row: {}", e))?);
         }
+
+        println!("✅ [DEBUG] Found {} products", products.len());
 
         Ok(products)
     }

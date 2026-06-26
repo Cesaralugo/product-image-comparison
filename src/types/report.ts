@@ -31,6 +31,7 @@ export interface ReportPreview {
     review_id: string
     product_reference: string
     product_description?:string
+    product_metadata?: Record<string, unknown>
     candidates_count: number
     selected_count: number
     uploaded_count: number
