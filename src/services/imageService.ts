@@ -12,10 +12,14 @@ export interface ImageDimensions {
 export interface ImageInfo {
   path: string
   filename: string
+  format: string
   sizeBytes: number
+  sizeMb: number
   width: number
   height: number
   aspectRatio: number
+  modified: string
+  isImage: boolean
 }
 
 export interface UploadMetadata {
@@ -199,8 +203,55 @@ export const imageService = {
   },
 
   /**
-   * Batch discover images for multiple products
-   */
+  * Upload an image for a product to the backend
+  */
+  uploadProductImage: async (
+    productReference: string,
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<{
+    path: string
+    filename: string
+    thumbnail_path: string
+    product_reference: string
+    uploaded_at: string
+  }> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const imageData = new Uint8Array(arrayBuffer)
+      const imageDataArray = Array.from(imageData)
+
+      if (onProgress) {
+        onProgress(0)
+      }
+
+      const result = await invoke<{
+        path: string
+        filename: string
+        thumbnail_path: string
+        product_reference: string
+        uploaded_at: string
+      }>('upload_product_image', {
+        productReference,
+        imageData: imageDataArray,
+        filename: file.name
+      })
+
+      if (onProgress) {
+        onProgress(100)
+      }
+
+      console.log('✅ Image uploaded successfully:', result)
+      return result
+    } catch (error) {
+      console.error('❌ Failed to upload image:', error)
+      throw error
+    }
+  },
+
+  /**
+  * Batch discover images for multiple products
+  */
   batchDiscoverImages: async (
     productReferences: string[],
     strategy: 'folder' | 'filename' | 'csv' | 'metadata' | 'manual',
@@ -217,6 +268,19 @@ export const imageService = {
       return result.results
     } catch (error) {
       console.error('Failed to batch discover images:', error)
+      throw error
+    }
+  },
+
+  /**
+  * Get image info with detailed metadata
+  */
+  getImageInfo: async (imagePath: string): Promise<ImageInfo> => {
+    try {
+      const result = await invoke<ImageInfo>('get_image_info', { imagePath })
+      return result
+    } catch (error) {
+      console.error('Failed to get image info:', error)
       throw error
     }
   },

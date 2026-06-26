@@ -6,8 +6,6 @@ interface ImageDiscoverySettingsProps {
   settings?: DiscoverySettings
   onUpdate?: (settings: DiscoverySettings) => void
   onSave?: () => void
-  // Add a key prop to reset the component
-  key?: string | number
 }
 
 const ImageDiscoverySettings: React.FC<ImageDiscoverySettingsProps> = ({
@@ -15,28 +13,27 @@ const ImageDiscoverySettings: React.FC<ImageDiscoverySettingsProps> = ({
   onUpdate,
   settings
 }) => {
-  // Initialize state directly from props - no useEffect needed
-  const [strategy, setStrategy] = useState(settings?.defaultStrategy || 'folder')
-  const [imagePath, setImagePath] = useState(settings?.basePath || '')
-  const [pattern, setPattern] = useState(settings?.filenamePattern || '{reference}_*.jpg')
-  const [autoDiscover, setAutoDiscover] = useState<boolean>(settings?.autoDiscoverOnLoad ?? true)
-  const [maxCandidates, setMaxCandidates] = useState(settings?.maxCandidates || 20)
+  const [strategy, setStrategy] = useState(settings?.default_strategy || 'folder')
+  const [imagePath, setImagePath] = useState(settings?.base_path || '')
+  const [pattern, setPattern] = useState(settings?.filename_pattern || '{reference}_*.jpg')
+  const [autoDiscover, setAutoDiscover] = useState<boolean>(settings?.auto_discover_on_load ?? true)
+  const [maxCandidates, setMaxCandidates] = useState(settings?.max_candidates || 20)
 
   const handleUpdate = () => {
     if (onUpdate) {
       onUpdate({
-        defaultStrategy: strategy,
-        basePath: imagePath,
-        filenamePattern: pattern,
-        autoDiscoverOnLoad: autoDiscover,
-        maxCandidates: maxCandidates
+        default_strategy: strategy,
+        base_path: imagePath,
+        filename_pattern: pattern,
+        auto_discover_on_load: autoDiscover,
+        max_candidates: maxCandidates
       })
     }
   }
 
   return (
     <div className="settings-section">
-      <h3>Image Discovery Strategy</h3>
+      <h3>Discovery Strategy</h3>
       <div className="setting-group">
         <label>Strategy:</label>
         <select
@@ -54,7 +51,7 @@ const ImageDiscoverySettings: React.FC<ImageDiscoverySettingsProps> = ({
         </select>
       </div>
       <div className="setting-group">
-        <label>Image Path:</label>
+        <label>Image Base Path:</label>
         <input
           type="text"
           value={imagePath}
@@ -104,7 +101,9 @@ const ImageDiscoverySettings: React.FC<ImageDiscoverySettingsProps> = ({
         />
       </div>
       {onSave && (
-        <button onClick={onSave}>Save Settings</button>
+        <button onClick={onSave} className="btn-save-section">
+          💾 Save Discovery Settings
+        </button>
       )}
     </div>
   )

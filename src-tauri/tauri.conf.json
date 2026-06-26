@@ -1,29 +1,36 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "product-image-comparison",
+  "productName": "product-image-review-platform",
+  "identifier": "com.product-image-review-platform.dev",
   "version": "0.1.0",
-  "identifier": "com.productimagecomparison.app",
   "build": {
-    "beforeDevCommand": "vite",
-    "beforeBuildCommand": "vite build",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
   "app": {
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**/*"]
+      }
+    },
     "windows": [
       {
-        "title": "Product comparison",
+        "title": "Product Image Review Platform",
         "width": 1200,
         "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "center": true,
+        "label": "main"
       }
-    ],
-    "security": {
-      "csp": null
-    }
+    ]
   },
   "bundle": {
-    "active": true
+    "active": true,
+    "targets": "all"
   }
 }

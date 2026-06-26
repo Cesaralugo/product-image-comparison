@@ -1,31 +1,37 @@
-// src/services/thumbnail_cache.rs
+// src-tauri/src/services/thumbnail_cache.rs
 use crate::config::{get_cache_dir, get_thumbnail_size};
 use image::imageops::FilterType;
 use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
+use image::ImageFormat;
 
 pub struct ThumbnailCache;
 
 impl ThumbnailCache {
-    /// Generate a thumbnail for an image
     pub fn generate_thumbnail(image_path: &str) -> Result<String, String> {
         let cache_dir = Self::get_cache_dir()?;
-
-        // Generate unique filename for thumbnail
         let uuid = Uuid::new_v4().to_string();
         let thumb_filename = format!("{}.jpg", uuid);
         let thumb_path = cache_dir.join(thumb_filename);
 
-        // Load image
-        let img = image::open(image_path)
-            .map_err(|e| format!("Failed to open image: {}", e))?;
+        // Try to open the image
+        let img = match image::open(image_path) {
+            Ok(img) => img,
+            Err(e) => {
+                println!("⚠️ [DEBUG] Failed to open image '{}': {}", image_path, e);
+                return Self::create_placeholder_thumbnail(&thumb_path);
+            }
+        };
 
-        // Calculate thumbnail dimensions maintaining aspect ratio
         let (width, height) = (img.width(), img.height());
-        let ratio = width as f32 / height as f32;
+        if width == 0 || height == 0 {
+            println!("⚠️ [DEBUG] Invalid image dimensions for '{}'", image_path);
+            return Self::create_placeholder_thumbnail(&thumb_path);
+        }
 
-        let thumbnail_size = get_thumbnail_size(); // Get the current thumbnail size
+        let ratio = width as f32 / height as f32;
+        let thumbnail_size = get_thumbnail_size();
 
         let (thumb_width, thumb_height) = if ratio > 1.0 {
             (thumbnail_size, (thumbnail_size as f32 / ratio) as u32)
@@ -33,15 +39,41 @@ impl ThumbnailCache {
             ((thumbnail_size as f32 * ratio) as u32, thumbnail_size)
         };
 
-        // Resize image
-        let thumbnail = img.resize(thumb_width, thumb_height, FilterType::Lanczos3);
+        // Use a safer resize method
+        let thumbnail = img.resize(thumb_width, thumb_height, FilterType::Nearest);
 
-        // Save thumbnail
-        thumbnail.save(&thumb_path)
-            .map_err(|e| format!("Failed to save thumbnail: {}", e))?;
-
-        Ok(thumb_path.to_string_lossy().to_string())
+        // Try to save as JPEG with error handling
+        match thumbnail.save_with_format(&thumb_path, ImageFormat::Jpeg) {
+            Ok(_) => Ok(thumb_path.to_string_lossy().to_string()),
+            Err(e) => {
+                println!("⚠️ [DEBUG] Failed to save thumbnail: {}", e);
+                Self::create_placeholder_thumbnail(&thumb_path)
+            }
+        }
     }
+
+    fn create_placeholder_thumbnail(thumb_path: &Path) -> Result<String, String> {
+        use image::{ImageBuffer, Rgba};
+
+        let width = 200;
+        let height = 200;
+        let img = ImageBuffer::from_fn(width, height, |x, y| {
+            let color = if (x / 10 + y / 10) % 2 == 0 {
+                Rgba([200, 200, 200, 255])
+            } else {
+                Rgba([240, 240, 240, 255])
+            };
+            color
+        });
+
+        let dynamic_img = image::DynamicImage::ImageRgba8(img);
+
+        match dynamic_img.save(thumb_path) {
+            Ok(_) => Ok(thumb_path.to_string_lossy().to_string()),
+            Err(e) => Err(format!("Failed to save placeholder thumbnail: {}", e))
+        }
+    }
+
 
     /// Get cached thumbnail if it exists
     pub fn get_cached_thumbnail(image_id: &str) -> Option<String> {
@@ -64,20 +96,24 @@ impl ThumbnailCache {
 
     /// Get or generate thumbnail
     pub fn get_or_generate_thumbnail(image_path: &str) -> Result<String, String> {
-        // Check if we already have a thumbnail for this image
-        // We use the image path as a key for simplicity
         let image_hash = Self::hash_path(image_path);
 
         if let Some(cached) = Self::get_cached_thumbnail(&image_hash) {
-            return Ok(cached);
+            if Path::new(&cached).exists() {
+                return Ok(cached);
+            }
         }
 
-        // Generate new thumbnail
         let thumb_path = Self::generate_thumbnail(image_path)?;
 
-        // Rename to use hash as filename for consistency
         let cache_dir = Self::get_cache_dir()?;
         let new_thumb_path = cache_dir.join(format!("{}.jpg", image_hash));
+
+        if new_thumb_path.exists() {
+            fs::remove_file(&new_thumb_path)
+                .map_err(|e| format!("Failed to remove old thumbnail: {}", e))?;
+        }
+
         fs::rename(&thumb_path, &new_thumb_path)
             .map_err(|e| format!("Failed to rename thumbnail: {}", e))?;
 

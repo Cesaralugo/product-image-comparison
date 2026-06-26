@@ -21,16 +21,24 @@ export interface ReviewSession {
 }
 
 export interface ReportPreview {
-  session: ReviewSession & { completion_percentage: number }
+  session: {
+    id: string
+    status: string
+    completion_percentage: number
+    product_count?: number
+  }
   reviews: Array<{
     review_id: string
     product_reference: string
+    product_description?:string
     candidates_count: number
     selected_count: number
     uploaded_count: number
     notes: string
     time_to_decide_seconds: number
     decision_timestamp: string
+    status?: string
+    decision?: string
   }>
   summary: {
     total_reviews: number

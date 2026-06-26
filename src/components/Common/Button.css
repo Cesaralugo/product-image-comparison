@@ -16,10 +16,11 @@
   white-space: nowrap;
   user-select: none;
   position: relative;
+  font-family: inherit;
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--primary-color, #4caf50);
+  outline: 2px solid var(--primary-color, #4299e1);
   outline-offset: 2px;
 }
 
@@ -31,14 +32,14 @@
 
 /* Variants */
 .btn-primary {
-  background: var(--primary-color, #4caf50);
+  background: #4299e1;
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-color-dark, #388e3c);
+  background: #3182ce;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -46,14 +47,14 @@
 }
 
 .btn-secondary {
-  background: var(--secondary-color, #6c757d);
-  color: white;
+  background: #edf2f7;
+  color: #2d3748;
+  border: 1px solid #e2e8f0;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--secondary-color-dark, #5a6268);
+  background: #e2e8f0;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
 .btn-outline {
@@ -69,14 +70,26 @@
 }
 
 .btn-danger {
-  background: var(--danger-color, #dc3545);
+  background: #fc8181;
   color: white;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: var(--danger-color-dark, #c82333);
+  background: #f56565;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+  box-shadow: 0 4px 12px rgba(252, 129, 129, 0.3);
+}
+
+/* Success */
+.btn-success {
+  background: #48bb78;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #38a169;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
 }
 
 /* Sizes */
@@ -132,8 +145,8 @@
 }
 
 .btn-outline.btn-loading::after {
-  border-color: rgba(76, 175, 80, 0.3);
-  border-top-color: var(--primary-color, #4caf50);
+  border-color: rgba(45, 55, 72, 0.3);
+  border-top-color: #2d3748;
 }
 
 /* Dark theme support */
@@ -162,4 +175,9 @@
     justify-content: center;
     padding: 12px 16px;
   }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

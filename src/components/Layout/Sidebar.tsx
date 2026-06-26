@@ -1,35 +1,43 @@
-import { useState } from 'react'
+// src/components/Layout/Sidebar.tsx
+import React from 'react'
+import { PageType } from '@/state/store'
 import './Sidebar.css'
 
 interface SidebarProps {
-  isOpen: boolean
+  onNavigate?: (page: PageType) => void
+  activePage?: PageType
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
-  const [activeItem, setActiveItem] = useState('dashboard')
+const Sidebar: React.FC<SidebarProps> = ({ onNavigate, activePage = 'dashboard' }) => {
+  console.log('Sidebar: Rendering...', { activePage })
 
-  const menuItems = [
+  const menuItems: { id: PageType; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'load-products', label: 'Load Products', icon: '📁' },
-    { id: 'review', label: 'Review Session', icon: '✓' },
+    { id: 'sessions', label: 'Sessions', icon: '📋' },
+    { id: 'gallery', label: 'Gallery', icon: '🖼️' },
     { id: 'reports', label: 'Reports', icon: '📄' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ]
 
+  const handleNavigate = (pageId: PageType) => {
+    console.log('🔗 Sidebar: Navigating to:', pageId)
+    if (onNavigate) {
+      onNavigate(pageId)
+    }
+  }
+
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
-      <nav className="sidebar-nav">
-        <ul className="nav-list">
+    <aside className="sidebar">
+      <nav>
+        <ul>
           {menuItems.map((item) => (
-            <li key={item.id}>
-              <a
-                href={`#${item.id}`}
-                className={`nav-link ${activeItem === item.id ? 'active' : ''}`}
-                onClick={() => setActiveItem(item.id)}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <span className="nav-label">{item.label}</span>
-              </a>
+            <li
+              key={item.id}
+              className={activePage === item.id ? 'active' : ''}
+              onClick={() => handleNavigate(item.id)}
+            >
+              <span className="menu-icon">{item.icon}</span>
+              <span className="menu-label">{item.label}</span>
             </li>
           ))}
         </ul>

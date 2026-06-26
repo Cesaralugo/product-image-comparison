@@ -1,7 +1,17 @@
 // src/state/store.ts
 import { create } from 'zustand'
 import type { Product, ReviewResult, ReviewSession } from '@/types'
-import { createReviewSession, getAllSessions, getSessionReviews, saveReview } from '@/services/api'
+import {
+  createReviewSession,
+  getAllSessions,
+  getSessionReviews,
+  saveReview,
+  deleteReviewSession,
+  getReviewSession,      // ✅ Add this import
+  getProductsByReference // ✅ Add this import
+} from '@/services/api'
+
+export type PageType = 'dashboard' | 'sessions' | 'gallery' | 'reports' | 'settings'
 
 interface AppState {
   // Session state
@@ -10,6 +20,10 @@ interface AppState {
   isLoading: boolean
   error: string | null
 
+  // Navigation
+  currentPage: PageType
+  navigateTo: (page: PageType) => void
+
   // Session actions
   loadSessions: () => Promise<void>
   startSession: (session: ReviewSession) => void
@@ -17,6 +31,7 @@ interface AppState {
   endSession: () => void
   createSession: (productCount: number) => Promise<ReviewSession>
   selectSession: (sessionId: string) => Promise<void>
+  deleteSession: (sessionId: string) => Promise<void>
 
   // Product state
   products: Product[]
@@ -46,13 +61,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLoading: false,
   error: null,
 
+  // Navigation
+  currentPage: 'dashboard',
+
+  navigateTo: (page: PageType) => {
+    console.log('Navigating to:', page)
+    set({ currentPage: page })
+  },
+
   // Session actions
   loadSessions: async () => {
+    console.log('📋 Loading sessions from database...')
     set({ isLoading: true, error: null })
     try {
       const sessions = await getAllSessions()
+      console.log(`📋 Loaded ${sessions.length} sessions`)
       set({ sessions, isLoading: false })
     } catch (error) {
+      console.error('❌ Failed to load sessions:', error)
       set({
         error: error instanceof Error ? error.message : 'Failed to load sessions',
         isLoading: false
@@ -60,20 +86,35 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  startSession: (session) => set({ currentSession: session }),
+  startSession: (session: ReviewSession) => {
+    console.log('▶️ Starting session:', session.id)
+    set((state) => ({
+      currentSession: session,
+      sessions: state.sessions.some(s => s.id === session.id)
+        ? state.sessions.map(s => s.id === session.id ? session : s)
+        : [session, ...state.sessions]
+    }))
+  },
 
-  updateSession: (session) =>
+  updateSession: (session) => {
+    console.log('🔄 Updating session:', session.id)
     set((state) => ({
       currentSession: session,
       sessions: state.sessions.map((s) => (s.id === session.id ? session : s)),
-    })),
+    }))
+  },
 
-  endSession: () => set({ currentSession: null, reviews: [] }),
+  endSession: () => {
+    console.log('⏹️ Ending session')
+    set({ currentSession: null, reviews: [] })
+  },
 
   createSession: async (productCount: number) => {
+    console.log('📝 Creating new session with', productCount, 'products')
     set({ isLoading: true, error: null })
     try {
       const session = await createReviewSession(productCount)
+      console.log('✅ Session created:', session.id)
       set((state) => ({
         sessions: [session, ...state.sessions],
         currentSession: session,
@@ -81,6 +122,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }))
       return session
     } catch (error) {
+      console.error('❌ Failed to create session:', error)
       set({
         error: error instanceof Error ? error.message : 'Failed to create session',
         isLoading: false
@@ -90,29 +132,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectSession: async (sessionId: string) => {
+    console.log('🔍 Selecting session:', sessionId)
     set({ isLoading: true, error: null })
     try {
-      // Find session in existing list or load it
-      const existing = get().sessions.find((s) => s.id === sessionId)
-      if (existing) {
-        set({ currentSession: existing, isLoading: false })
-        // Load reviews for this session
+      // Get the session
+      const session = await getReviewSession(sessionId)
+      if (session) {
+        // Load products for this session
+        if (session.productReferences && session.productReferences.length > 0) {
+          const products = await getProductsByReference(session.productReferences)
+          set({ products })
+          console.log('✅ Products loaded for session:', products)
+        }
+        set({ currentSession: session, isLoading: false })
         await get().loadReviews(sessionId)
       } else {
-        // If session not in list, reload all sessions
-        await get().loadSessions()
-        const found = get().sessions.find((s) => s.id === sessionId)
-        if (found) {
-          set({ currentSession: found, isLoading: false })
-          await get().loadReviews(sessionId)
-        } else {
-          set({
-            error: `Session ${sessionId} not found`,
-            isLoading: false
-          })
-        }
+        set({
+          error: `Session ${sessionId} not found`,
+          isLoading: false
+        })
       }
     } catch (error) {
+      console.error('❌ Failed to select session:', error)
       set({
         error: error instanceof Error ? error.message : 'Failed to select session',
         isLoading: false
@@ -120,16 +161,42 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  deleteSession: async (sessionId: string) => {
+    console.log('🗑️ Deleting session:', sessionId)
+    set({ isLoading: true, error: null })
+    try {
+      await deleteReviewSession(sessionId)
+      console.log('✅ Session deleted:', sessionId)
+
+      set((state) => ({
+        sessions: state.sessions.filter((s) => s.id !== sessionId),
+        currentSession: state.currentSession?.id === sessionId ? null : state.currentSession,
+        isLoading: false,
+      }))
+
+      await get().loadSessions()
+    } catch (error) {
+      console.error('❌ Failed to delete session:', error)
+      set({
+        error: error instanceof Error ? error.message : 'Failed to delete session',
+        isLoading: false
+      })
+      throw error
+    }
+  },
+
   // Products
   products: [],
   currentProductIndex: 0,
 
-  loadProducts: (products) => set({
-    products,
-    currentProductIndex: 0,
-    // Reset reviews when loading new products
-    reviews: []
-  }),
+  loadProducts: (products) => {
+    console.log('📦 Loading', products.length, 'products')
+    set({
+      products,
+      currentProductIndex: 0,
+      reviews: []
+    })
+  },
 
   nextProduct: () =>
     set((state) => ({
@@ -144,7 +211,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentProductIndex: Math.max(state.currentProductIndex - 1, 0),
     })),
 
-  setCurrentProductIndex: (index) => set({ currentProductIndex: index }),
+  setCurrentProductIndex: (index) => {
+    set({ currentProductIndex: index })
+  },
 
   getCurrentProduct: () => {
     const state = get()
@@ -155,13 +224,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   reviews: [],
 
   addReview: async (review: ReviewResult) => {
+    console.log('💾 Saving review for product:', review.product_reference)
     set({ isLoading: true, error: null })
     try {
       await saveReview(review)
+      console.log('✅ Review saved successfully')
       set((state) => ({
         reviews: [...state.reviews, review],
         isLoading: false,
-        // Update session progress if needed
         currentSession: state.currentSession ? {
           ...state.currentSession,
           reviewedCount: state.currentSession.reviewedCount + 1,
@@ -169,6 +239,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         } : null,
       }))
     } catch (error) {
+      console.error('❌ Failed to save review:', error)
       set({
         error: error instanceof Error ? error.message : 'Failed to save review',
         isLoading: false
@@ -183,11 +254,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   loadReviews: async (sessionId: string) => {
+    console.log('📖 Loading reviews for session:', sessionId)
     set({ isLoading: true, error: null })
     try {
       const reviews = await getSessionReviews(sessionId)
+      console.log(`📖 Loaded ${reviews.length} reviews`)
       set({ reviews, isLoading: false })
     } catch (error) {
+      console.error('❌ Failed to load reviews:', error)
       set({
         error: error instanceof Error ? error.message : 'Failed to load reviews',
         isLoading: false

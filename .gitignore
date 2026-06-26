@@ -33,10 +33,12 @@ yarn-error.log*
 
 # Cache
 .cache/
+cache/
 .eslintcache
 
 # Tauri
 src-tauri/target/
+src-tauri/uploads/
 
 # Test coverage
 coverage/
@@ -54,3 +56,6 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Test
+test_data/

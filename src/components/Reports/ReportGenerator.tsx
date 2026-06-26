@@ -1,6 +1,6 @@
 // src/components/Reports/ReportGenerator.tsx
-import React, { useState } from 'react'
-import type { ReportFormat } from '@/types/report'
+import React, { useState, useEffect } from 'react'
+import type { ReportFormat, ReportPreview } from '@/types/report'
 import { useReportGenerator } from '@/hooks/useReportGenerator'
 import './ExportOptions.css'
 
@@ -11,6 +11,11 @@ interface ReportGeneratorProps {
   showPreview?: boolean
 }
 
+// Helper to get status from review
+const getStatus = (review: { status?: string; decision?: string }): string => {
+  return review.status || review.decision || 'pending'
+}
+
 const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   sessionId,
   onGenerateReport,
@@ -18,6 +23,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   showPreview = true,
 }) => {
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat>('pdf')
+  const [previewData, setPreviewData] = useState<ReportPreview | null>(null)
 
   const {
     isGenerating,
@@ -26,8 +32,19 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     success,
     preview,
     generateReport,
-    reset,  // Add reset from the hook
+    reset,
   } = useReportGenerator({ sessionId, autoLoad: showPreview })
+
+  // Store preview data when it loads - use a different approach to avoid setState in effect
+  useEffect(() => {
+    if (preview) {
+      // Use a timeout to avoid direct setState in effect
+      const timer = setTimeout(() => {
+        setPreviewData(preview)
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [preview])
 
   const handleGenerate = async () => {
     if (!sessionId) {
@@ -39,15 +56,13 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
       if (onGenerateReport) {
         onGenerateReport(selectedFormat, outputPath)
       }
-    } catch (_err) {
-      // Error is handled by the hook - log it for debugging
-      console.error('Report generation failed:', _err)
+    } catch {
+      // Error is handled by the hook
     }
   }
 
   const handleFormatChange = (format: ReportFormat) => {
     setSelectedFormat(format)
-    // Use reset from the hook to clear error/success states
     reset()
   }
 
@@ -67,6 +82,134 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
       case 'json': return 'JSON data format for developers'
       default: return ''
     }
+  }
+
+  // Render CSV preview
+  const renderCSVPreview = () => {
+    if (!previewData || previewData.reviews.length === 0) {
+      return (
+        <div className="preview-empty">
+          <p>📭 No reviews found for this session</p>
+          <p className="preview-hint">Save some reviews first to see the preview</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="csv-preview">
+        <div className="csv-preview-header">
+          <span className="csv-preview-title">CSV Preview</span>
+          <span className="csv-preview-count">{previewData.reviews.length} rows</span>
+        </div>
+        <div className="csv-preview-table-wrapper">
+          <table className="csv-preview-table">
+            <thead>
+              <tr>
+                <th>Product Reference</th>
+                <th>Product Description</th>  {/* ✅ Added Description column */}
+                <th>Candidates</th>
+                <th>Selected</th>
+                <th>Uploaded</th>
+                <th>Notes</th>
+                <th>Decision</th>
+                <th>Time (s)</th>
+                <th>Decision Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {previewData.reviews.map((review, index) => (
+                <tr key={index}>
+                  <td><strong>{review.product_reference}</strong></td>
+                  <td className="csv-description">{review.product_description || '-'}</td>  {/* ✅ Added Description */}
+                  <td>{review.candidates_count}</td>
+                  <td>{review.selected_count}</td>
+                  <td>{review.uploaded_count}</td>
+                  <td className="csv-notes">{review.notes || '-'}</td>
+                  <td>
+                    <span className={`decision-badge ${getStatus(review)}`}>
+                      {getStatus(review)}
+                    </span>
+                  </td>
+                  <td>{review.time_to_decide_seconds.toFixed(1)}s</td>
+                  <td>{new Date(review.decision_timestamp).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="csv-preview-footer">
+          <span>Showing {previewData.reviews.length} of {previewData.reviews.length} rows</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Render PDF preview
+  const renderPDFPreview = () => {
+    if (!previewData || previewData.reviews.length === 0) {
+      return (
+        <div className="preview-empty">
+          <p>📭 No reviews found for this session</p>
+          <p className="preview-hint">Save some reviews first to see the preview</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="pdf-preview">
+        <div className="pdf-preview-header">
+          <span className="pdf-preview-title">PDF Report Preview</span>
+          <span className="pdf-preview-count">
+            Session: {previewData.session.id.substring(0, 12)}...
+          </span>
+        </div>
+        <div className="pdf-preview-content">
+          <div className="pdf-preview-summary">
+            <div className="summary-item">
+              <span className="summary-label">Status:</span>
+              <span className="summary-value">{previewData.session.status}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Products:</span>
+              <span className="summary-value">{previewData.session.product_count || 0}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Reviews:</span>
+              <span className="summary-value">{previewData.reviews.length}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Completion:</span>
+              <span className="summary-value">{previewData.session.completion_percentage.toFixed(1)}%</span>
+            </div>
+          </div>
+          <div className="pdf-preview-reviews">
+            <h4>Review Details</h4>
+            {previewData.reviews.slice(0, 5).map((review, index) => (
+              <div key={index} className="pdf-review-item">
+                <div className="pdf-review-header">
+                  <span className="pdf-review-ref">{review.product_reference}</span>
+                  <span className={`decision-badge ${getStatus(review)}`}>
+                    {getStatus(review)}
+                  </span>
+                </div>
+                <div className="pdf-review-details">
+                  <span>📷 {review.candidates_count} candidates → {review.selected_count} selected</span>
+                  <span>⏱ {review.time_to_decide_seconds.toFixed(1)}s</span>
+                </div>
+                {review.notes && (
+                  <div className="pdf-review-notes">📝 {review.notes}</div>
+                )}
+              </div>
+            ))}
+            {previewData.reviews.length > 5 && (
+              <div className="pdf-review-more">
+                + {previewData.reviews.length - 5} more reviews
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -98,78 +241,17 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
         {/* Preview Section */}
         {showPreview && (
           <div className="report-preview-section">
-            <h3>Session Preview</h3>
+            <h3>Preview</h3>
             {isLoading ? (
               <div className="loading-spinner">Loading preview...</div>
-            ) : preview ? (
-              <div className="preview-stats">
-                <div className="stat-grid">
-                  <div className="stat-item">
-                    <label>Session Status</label>
-                    <span className={`status-badge ${preview.session.status}`}>
-                      {preview.session.status}
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <label>Completion</label>
-                    <span>{preview.session.completion_percentage.toFixed(1)}%</span>
-                  </div>
-                  <div className="stat-item">
-                    <label>Total Reviews</label>
-                    <span>{preview.summary.total_reviews}</span>
-                  </div>
-                  <div className="stat-item">
-                    <label>Candidates</label>
-                    <span>{preview.summary.total_candidates_presented}</span>
-                  </div>
-                  <div className="stat-item">
-                    <label>Selected Images</label>
-                    <span>{preview.summary.total_selected_images}</span>
-                  </div>
-                  <div className="stat-item">
-                    <label>Uploaded</label>
-                    <span>{preview.summary.total_uploaded_replacements}</span>
-                  </div>
-                  <div className="stat-item">
-                    <label>Avg Decision Time</label>
-                    <span>
-                      {(preview.summary.average_time_to_decide_ms / 1000).toFixed(2)}s
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <label>Generated</label>
-                    <span>{new Date(preview.generated_at).toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {/* Recent reviews preview */}
-                {preview.reviews.length > 0 && (
-                  <div className="reviews-preview">
-                    <h4>Recent Reviews</h4>
-                    <div className="review-list">
-                      {preview.reviews.slice(0, 5).map((review) => (
-                        <div key={review.review_id} className="review-item">
-                          <span className="review-product">{review.product_reference}</span>
-                          <span className="review-stats">
-                            {review.candidates_count} candidates → {review.selected_count} selected
-                            {review.uploaded_count > 0 && ` (+${review.uploaded_count} uploaded)`}
-                          </span>
-                          <span className="review-time">
-                            {review.time_to_decide_seconds.toFixed(1)}s
-                          </span>
-                        </div>
-                      ))}
-                      {preview.reviews.length > 5 && (
-                        <div className="review-more">
-                          + {preview.reviews.length - 5} more reviews
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+            ) : selectedFormat === 'csv' ? (
+              renderCSVPreview()
+            ) : selectedFormat === 'pdf' ? (
+              renderPDFPreview()
             ) : (
-              <div className="no-preview">No preview data available</div>
+              <div className="preview-empty">
+                <p>📄 Preview not available for this format</p>
+              </div>
             )}
           </div>
         )}

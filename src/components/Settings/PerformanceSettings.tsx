@@ -1,10 +1,10 @@
 // src/components/Settings/PerformanceSettings.tsx
-import type { PerformanceSettings as PerfSettings } from '@/types/settings'
+import type { PerformanceSettings } from '@/types/settings'
 import { useState } from 'react'
 
 interface PerformanceSettingsProps {
-  settings?: PerfSettings
-  onUpdate?: (settings: PerfSettings) => void
+  settings?: PerformanceSettings
+  onUpdate?: (settings: PerformanceSettings) => void
   onSave?: () => void
 }
 
@@ -13,19 +13,19 @@ const PerformanceSettings: React.FC<PerformanceSettingsProps> = ({
   onUpdate,
   settings
 }) => {
-  // Initialize state directly from props - no useEffect needed
-  const [thumbnailSize, setThumbnailSize] = useState(settings?.thumbnailSize || 200)
-  const [gridColumns, setGridColumns] = useState(settings?.gridColumns || 3)
-  const [lazyLoadThreshold, setLazyLoadThreshold] = useState(settings?.lazyLoadThreshold || 10)
-  const [preloadCount, setPreloadCount] = useState(settings?.preloadCount || 4)
+  // Use snake_case property names
+  const [thumbnailSize, setThumbnailSize] = useState(settings?.thumbnail_size || 200)
+  const [gridColumns, setGridColumns] = useState(settings?.grid_columns || 3)
+  const [lazyLoadThreshold, setLazyLoadThreshold] = useState(settings?.lazy_load_threshold || 10)
+  const [preloadCount, setPreloadCount] = useState(settings?.preload_count || 4)
 
   const handleUpdate = () => {
     if (onUpdate) {
       onUpdate({
-        thumbnailSize: thumbnailSize,
-        gridColumns: gridColumns,
-        lazyLoadThreshold: lazyLoadThreshold,
-        preloadCount: preloadCount
+        thumbnail_size: thumbnailSize,
+        grid_columns: gridColumns,
+        lazy_load_threshold: lazyLoadThreshold,
+        preload_count: preloadCount
       })
     }
   }

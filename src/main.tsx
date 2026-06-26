@@ -1,24 +1,15 @@
-// src/App.tsx
+// src/main.tsx - Phase 2 (Points to main App)
 import React from 'react'
-import { useAppStore } from './state/store'
-import MainLayout from './components/Layout/MainLayout'
-import './App.css'
+import ReactDOM from 'react-dom/client'
+import App from './App'  // ← Changed from AppMinimal to App
+import './styles/globals.css'
 
-const App: React.FC = () => {
-  // Remove setIsLoading if it doesn't exist in the store
-  // const { setIsLoading: setStoreLoading } = useAppStore()
-  const { loadSessions } = useAppStore()
+console.log('🚀 Phase 2: Starting with App...')
 
-  // Load sessions on mount
-  React.useEffect(() => {
-    loadSessions().catch(console.error)
-  }, [loadSessions])
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
 
-  return (
-    <div className="app">
-      <MainLayout />
-    </div>
-  )
-}
-
-export default App
+console.log('✅ Phase 2: App rendered!')

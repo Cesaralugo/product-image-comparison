@@ -1,19 +1,14 @@
-// src/commands/report_generator.rs
+// src-tauri/src/commands/report_generator.rs
 use crate::models::review::{ReviewResult, ReviewSession};
 use crate::services::database::Database;
-use crate::config;  // For APP_VERSION
+use crate::config;
 use printpdf::*;
 use serde_json::json;
 use std::fs::File;
-use std::io::BufWriter;
-use std::sync::Mutex;
+use std::io::{BufWriter};
 use tauri::State;
 use rusqlite::Connection;
-
-// Database connection state - matching what's in main.rs
-pub struct DbState {
-    pub conn: Mutex<Connection>,
-}
+use crate::AppState;
 
 #[derive(Debug, Clone)]
 struct ReportData {
@@ -26,20 +21,16 @@ struct ReportData {
 pub async fn generate_pdf_report(
     session_id: String,
     output_path: String,
-    state: State<'_, DbState>,
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     if session_id.is_empty() {
         return Err("Session ID is required".to_string());
     }
 
-    // Get database connection
-    let conn = state.conn.lock()
+    let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
-    // Load session data
     let report_data = load_report_data(&conn, &session_id)?;
-
-    // Generate PDF
     let pdf_path = generate_pdf(&report_data, &output_path)?;
 
     Ok(json!({
@@ -54,20 +45,16 @@ pub async fn generate_pdf_report(
 pub async fn generate_csv_report(
     session_id: String,
     output_path: String,
-    state: State<'_, DbState>,
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     if session_id.is_empty() {
         return Err("Session ID is required".to_string());
     }
 
-    // Get database connection
-    let conn = state.conn.lock()
+    let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
-    // Load session data
     let report_data = load_report_data(&conn, &session_id)?;
-
-    // Generate CSV
     let csv_path = generate_csv(&report_data, &output_path)?;
 
     Ok(json!({
@@ -81,18 +68,18 @@ pub async fn generate_csv_report(
 #[tauri::command]
 pub async fn preview_report(
     session_id: String,
-    state: State<'_, DbState>,
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     if session_id.is_empty() {
         return Err("Session ID is required".to_string());
     }
 
-    let conn = state.conn.lock()
+    let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
     let report_data = load_report_data(&conn, &session_id)?;
+    println!("📊 [DEBUG] Preview report: {} reviews found", report_data.reviews.len());
 
-    // Format for preview
     let preview = format_report_for_preview(&report_data);
 
     Ok(json!({
@@ -107,6 +94,7 @@ fn load_report_data(conn: &Connection, session_id: &str) -> Result<ReportData, S
         .ok_or_else(|| format!("Session not found: {}", session_id))?;
 
     let reviews = Database::get_session_reviews(conn, session_id)?;
+    println!("📊 [DEBUG] Loaded {} reviews for session {}", reviews.len(), session_id);
 
     Ok(ReportData {
         session,
@@ -117,7 +105,6 @@ fn load_report_data(conn: &Connection, session_id: &str) -> Result<ReportData, S
 
 /// Generate PDF report
 fn generate_pdf(data: &ReportData, output_path: &str) -> Result<String, String> {
-    // Create PDF document
     let (doc, page1, layer1) = PdfDocument::new(
         format!("Product Review Report - {}", data.session.id),
         Mm(210.0),
@@ -125,47 +112,43 @@ fn generate_pdf(data: &ReportData, output_path: &str) -> Result<String, String> 
         "Layer 1",
     );
 
-    let current_layer = doc.get_page(page1).get_layer(layer1);
-
-    // Set up fonts
     let font = doc.add_builtin_font(BuiltinFont::Helvetica)
         .map_err(|e| format!("Failed to add font: {}", e))?;
 
-    // Get current date for header
     let now = chrono::Local::now();
     let date_str = now.format("%B %d, %Y at %H:%M").to_string();
 
+    let current_layer = doc.get_page(page1).get_layer(layer1);
+    let mut y_pos;
+
     // ============ HEADER ============
-    // Title
+    y_pos = 270.0;
     current_layer.use_text(
         "Product Image Review Report".to_string(),
         24.0,
         Mm(20.0),
-        Mm(270.0),
+        Mm(y_pos),
         &font,
     );
 
-    // Subtitle
     current_layer.use_text(
         format!("Session ID: {}", data.session.id),
         12.0,
         Mm(20.0),
-        Mm(255.0),
+        Mm(y_pos - 15.0),
         &font,
     );
 
-    // Date
     current_layer.use_text(
         format!("Generated: {}", date_str),
         10.0,
         Mm(20.0),
-        Mm(240.0),
+        Mm(y_pos - 30.0),
         &font,
     );
 
     // ============ SESSION SUMMARY ============
-    let mut y_pos = 220.0;
-
+    y_pos = 220.0;
     current_layer.use_text(
         "Session Summary".to_string(),
         16.0,
@@ -205,7 +188,7 @@ fn generate_pdf(data: &ReportData, output_path: &str) -> Result<String, String> 
 
     // ============ REVIEW DETAILS ============
     current_layer.use_text(
-        "Review Details".to_string(),
+        format!("Review Details ({})", data.reviews.len()),
         16.0,
         Mm(20.0),
         Mm(y_pos),
@@ -213,7 +196,6 @@ fn generate_pdf(data: &ReportData, output_path: &str) -> Result<String, String> 
     );
     y_pos -= 15.0;
 
-    // Table headers
     let headers = vec![
         "Product Reference",
         "Candidates",
@@ -225,11 +207,9 @@ fn generate_pdf(data: &ReportData, output_path: &str) -> Result<String, String> 
     ];
 
     y_pos -= 10.0;
-
-    // Column widths
     let col_widths = vec![35.0, 18.0, 18.0, 18.0, 35.0, 22.0, 30.0];
-    let mut x_pos = 20.0;
 
+    let mut x_pos = 20.0;
     for (i, header) in headers.iter().enumerate() {
         current_layer.use_text(
             header.to_string(),
@@ -242,7 +222,6 @@ fn generate_pdf(data: &ReportData, output_path: &str) -> Result<String, String> 
     }
     y_pos -= 10.0;
 
-    // Table rows
     for review in &data.reviews {
         if y_pos < 20.0 {
             break;
@@ -288,7 +267,6 @@ fn generate_pdf(data: &ReportData, output_path: &str) -> Result<String, String> 
         &font,
     );
 
-    // Save PDF
     let final_path = if output_path.is_empty() {
         let default_name = format!("review_report_{}.pdf", data.session.id);
         std::env::current_dir()
@@ -309,9 +287,9 @@ fn generate_pdf(data: &ReportData, output_path: &str) -> Result<String, String> 
     Ok(final_path)
 }
 
-/// Generate CSV report
+/// Generate CSV report - Fixed with proper error handling
 fn generate_csv(data: &ReportData, output_path: &str) -> Result<String, String> {
-    use csv::Writer;
+    use std::io::Write;
 
     let final_path = if output_path.is_empty() {
         let default_name = format!("review_report_{}.csv", data.session.id);
@@ -324,52 +302,56 @@ fn generate_csv(data: &ReportData, output_path: &str) -> Result<String, String> 
         output_path.to_string()
     };
 
-    let file = File::create(&final_path)
+    // Write directly to the file
+    let mut file = File::create(&final_path)
         .map_err(|e| format!("Failed to create CSV file: {}", e))?;
 
-    let mut writer = Writer::from_writer(file);
-
-    // Write session summary as header comments
-    writer.write_record(&["# Product Image Review Report"])
-        .map_err(|e| format!("Failed to write CSV header: {}", e))?;
-    writer.write_record(&[format!("# Session ID: {}", data.session.id)])
-        .map_err(|e| format!("Failed to write CSV session: {}", e))?;
-    writer.write_record(&[format!("# Generated: {}", data.session.started_at)])
-        .map_err(|e| format!("Failed to write CSV generated: {}", e))?;
-    writer.write_record(&[format!("# Status: {}", data.session.status)])
-        .map_err(|e| format!("Failed to write CSV status: {}", e))?;
-    writer.write_record(&[format!("# Total Products: {}", data.session.product_count)])
-        .map_err(|e| format!("Failed to write CSV product count: {}", e))?;
-    writer.write_record(&[format!("# Reviewed: {}", data.session.reviewed_count)])
-        .map_err(|e| format!("Failed to write CSV reviewed count: {}", e))?;
-    writer.write_record(Vec::<&str>::new())
-        .map_err(|e| format!("Failed to write CSV empty line: {}", e))?;
+    // Write comments (all start with #) - use map_err for each
+    writeln!(file, "# Product Image Review Report")
+        .map_err(|e| format!("Failed to write header: {}", e))?;
+    writeln!(file, "# Session ID: {}", data.session.id)
+        .map_err(|e| format!("Failed to write session: {}", e))?;
+    writeln!(file, "# Generated: {}", data.session.started_at)
+        .map_err(|e| format!("Failed to write generated: {}", e))?;
+    writeln!(file, "# Status: {}", data.session.status)
+        .map_err(|e| format!("Failed to write status: {}", e))?;
+    writeln!(file, "# Total Products: {}", data.session.product_count)
+        .map_err(|e| format!("Failed to write product count: {}", e))?;
+    writeln!(file, "# Reviewed: {}", data.session.reviewed_count)
+        .map_err(|e| format!("Failed to write reviewed count: {}", e))?;
+    writeln!(file, "#")
+        .map_err(|e| format!("Failed to write separator: {}", e))?;
 
     // Write headers
-    writer.write_record(&[
-        "Product Reference",
-        "Candidates Count",
-        "Selected Images",
-        "Uploaded Replacements",
-        "Reviewer Notes",
-        "Time to Decide (s)",
-        "Decision Timestamp",
-    ]).map_err(|e| format!("Failed to write CSV headers: {}", e))?;
+    writeln!(file, "Product Reference,Product Description,Candidates Count,Selected Images,Uploaded Replacements,Reviewer Notes,Decision,Time to Decide (s),Decision Timestamp")
+        .map_err(|e| format!("Failed to write CSV headers: {}", e))?;
 
     // Write data rows
     for review in &data.reviews {
-        writer.write_record(&[
-            &review.product_reference,
-            &review.candidates_presented.len().to_string(),
-            &review.selected_images.join("; "),
-            &review.uploaded_replacements.join("; "),
-            &review.reviewer_notes,
-            &format!("{:.2}", review.time_to_decide as f64 / 1000.0),
-            &review.decision_timestamp,
-        ]).map_err(|e| format!("Failed to write CSV row for {}: {}", review.product_reference, e))?;
+        let description = review.product_description.clone().unwrap_or_else(|| "".to_string());
+        let decision = review.status.clone().unwrap_or_else(|| "pending".to_string());
+
+        let selected_images = review.selected_images.join("; ");
+        let reviewer_notes = review.reviewer_notes.replace(',', ";").replace('"', "'");
+        let description_clean = description.replace(',', ";").replace('"', "'");
+
+        writeln!(
+            file,
+            "{},{},{},{},{},{},{},{},{}",
+            review.product_reference,
+            description_clean,
+            review.candidates_presented.len(),
+            selected_images,
+            review.uploaded_replacements.join("; "),
+            reviewer_notes,
+            decision,
+            format!("{:.2}", review.time_to_decide as f64 / 1000.0),
+            review.decision_timestamp
+        )
+        .map_err(|e| format!("Failed to write CSV row for {}: {}", review.product_reference, e))?;
     }
 
-    writer.flush()
+    file.flush()
         .map_err(|e| format!("Failed to flush CSV: {}", e))?;
 
     Ok(final_path)
@@ -387,12 +369,14 @@ fn format_report_for_preview(data: &ReportData) -> serde_json::Value {
         json!({
             "review_id": r.id,
             "product_reference": r.product_reference,
+            "product_description": r.product_description.clone().unwrap_or_else(|| "".to_string()),  // ✅ Add this
             "candidates_count": r.candidates_presented.len(),
             "selected_count": r.selected_images.len(),
             "uploaded_count": r.uploaded_replacements.len(),
             "notes": r.reviewer_notes,
             "time_to_decide_seconds": r.time_to_decide as f64 / 1000.0,
-            "decision_timestamp": r.decision_timestamp
+            "decision_timestamp": r.decision_timestamp,
+            "status": r.status.clone().unwrap_or_else(|| "pending".to_string())
         })
     }).collect();
 

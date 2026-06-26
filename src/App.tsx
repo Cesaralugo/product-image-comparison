@@ -1,23 +1,28 @@
 // src/App.tsx
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useAppStore } from './state/store'
 import MainLayout from './components/Layout/MainLayout'
+import ErrorBoundary from './components/Common/ErrorBoundary'
 import './App.css'
 
 const App: React.FC = () => {
-  // Remove the setIsLoading reference since it doesn't exist in the store
-  // The store has 'setLoading' instead of 'setIsLoading'
+  console.log('App: Rendering...')
+
   const { loadSessions } = useAppStore()
 
-  // Load sessions on mount
-  React.useEffect(() => {
-    loadSessions().catch(console.error)
+  useEffect(() => {
+    console.log('App: Loading sessions on startup...')
+    loadSessions().catch((error) => {
+      console.error('App: Failed to load sessions:', error)
+    })
   }, [loadSessions])
 
   return (
-    <div className="app">
-      <MainLayout />
-    </div>
+    <ErrorBoundary>
+      <div className="app">
+        <MainLayout />
+      </div>
+    </ErrorBoundary>
   )
 }
 

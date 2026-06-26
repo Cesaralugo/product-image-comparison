@@ -1,3 +1,49 @@
+/* src/components/Layout/Header.css */
+.header {
+  background: #2d3748;
+  color: white;
+  padding: 16px 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header h1 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.header-page {
+  font-size: 14px;
+  color: #a0aec0;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 12px 16px;
+  }
+
+  .header h1 {
+    font-size: 16px;
+  }
+
+  .header-page {
+    font-size: 12px;
+    padding: 4px 12px;
+  }
+}
+
 .app-header {
   display: flex;
   align-items: center;

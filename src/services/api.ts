@@ -2,8 +2,16 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { Product, ReviewSession, ReviewResult } from '@/types'
 
-export const loadProductsFromCSV = async (filePath: string): Promise<Product[]> => {
-  const result = await invoke<Product[]>('load_products_from_csv', { filePath })
+export const loadProductsFromCSV = async (filePath: string): Promise<{
+  products: Product[]
+  count: number
+  session?: ReviewSession
+}> => {
+  const result = await invoke<{
+    products: Product[]
+    count: number
+    session?: ReviewSession
+  }>('load_products_from_csv', { filePath })
   return result
 }
 
@@ -14,6 +22,9 @@ export const getProductsByReference = async (references: string[]): Promise<Prod
 
 export const getReviewSession = async (sessionId: string): Promise<ReviewSession | null> => {
   const result = await invoke<{ session: ReviewSession | null }>('get_review_session', { sessionId })
+  console.log('📋 Raw session from backend:', result.session)
+
+  if (!result.session) return null
   return result.session
 }
 
@@ -32,8 +43,26 @@ export const createReviewSession = async (productCount: number): Promise<ReviewS
 }
 
 export const getAllSessions = async (): Promise<ReviewSession[]> => {
+  console.log('📋 [DEBUG] getAllSessions called')
   const result = await invoke<{ sessions: ReviewSession[] }>('get_all_sessions')
-  return result.sessions
+  console.log('📋 [DEBUG] Raw sessions from backend:', result.sessions)
+
+  const mapped = result.sessions.map(s => ({
+    id: s.id,
+    startedAt: s.startedAt || s.startedAt,
+    lastUpdated: s.lastUpdated || s.lastUpdated,
+    productCount: s.productCount || s.productCount || 0,
+    reviewedCount: s.reviewedCount || s.reviewedCount || 0,
+    status: s.status || 'active',
+    productReferences: s.productReferences || s.productReferences || []
+  }))
+
+  console.log('📋 [DEBUG] Mapped sessions:', mapped)
+  return mapped
+}
+
+export const deleteReviewSession = async (sessionId: string): Promise<void> => {
+  await invoke('delete_review_session', { sessionId })
 }
 
 export const api = {
@@ -44,4 +73,5 @@ export const api = {
   getSessionReviews,
   createReviewSession,
   getAllSessions,
+  deleteReviewSession,
 }

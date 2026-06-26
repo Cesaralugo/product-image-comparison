@@ -1,37 +1,46 @@
-import React from 'react'
+// src/components/Common/ErrorBoundary.tsx
+import { Component, ErrorInfo, ReactNode } from 'react'  // Remove React import
 
-interface ErrorBoundaryState {
+interface Props {
+  children: ReactNode
+  fallback?: ReactNode
+}
+
+interface State {
   hasError: boolean
-  error?: Error
+  error: Error | null
+  errorInfo: ErrorInfo | null
 }
 
-interface ErrorBoundaryProps {
-  children: React.ReactNode
-}
-
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
+class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
     super(props)
-    this.state = { hasError: false }
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null
+    }
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error) {
-    console.error('ErrorBoundary caught an error:', error)
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    console.error('ErrorBoundary caught an error:', error, errorInfo)
+    this.setState({ errorInfo })
   }
 
-  render() {
+  render(): ReactNode {
     if (this.state.hasError) {
-      return (
-        <div style={{ padding: '20px' }}>
-          <h1>Something went wrong</h1>
-          <p>{this.state.error?.message}</p>
-          <button onClick={() => this.setState({ hasError: false })}>
-            Try again
-          </button>
+      return this.props.fallback || (
+        <div style={{ padding: '20px', margin: '20px', border: '2px solid red', borderRadius: '8px' }}>
+          <h2 style={{ color: 'red' }}>Something went wrong</h2>
+          <details style={{ whiteSpace: 'pre-wrap', marginTop: '10px' }}>
+            <summary>Error Details</summary>
+            <p><strong>{this.state.error?.toString()}</strong></p>
+            <p>{this.state.errorInfo?.componentStack}</p>
+          </details>
         </div>
       )
     }

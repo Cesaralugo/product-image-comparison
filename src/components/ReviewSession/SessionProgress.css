@@ -1,43 +1,161 @@
-.session-progress {
-  padding: calc(var(--spacing-unit) * 1.5);
-  background-color: var(--surface-color);
-  border-radius: var(--border-radius);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-unit);
+/* src/components/Settings/SettingsPanel.css */
+.settings-panel {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.progress-info {
+.settings-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #2d3748;
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-success {
+  color: #38a169;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+}
+
+.settings-error-text {
+  color: #e53e3e;
+  font-weight: 500;
+}
+
+.btn-save-settings {
+  padding: 8px 20px;
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save-settings:hover:not(:disabled) {
+  background: #3182ce;
+  transform: translateY(-1px);
+}
+
+.btn-save-settings:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+
+.settings-tabs button {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #718096;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-tabs button:hover {
+  color: #2d3748;
+  background: #f7fafc;
+}
+
+.settings-tabs button.active {
+  color: #4299e1;
+  border-bottom-color: #4299e1;
+}
+
+.settings-content {
+  padding: 8px 0;
+}
+
+.settings-section {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.settings-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #2d3748;
+}
+
+.setting-group {
+  margin-bottom: 16px;
+}
+
+.setting-group label {
+  display: block;
+  font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 4px;
   font-size: 14px;
 }
 
-.progress-text {
-  font-weight: 600;
-  color: var(--text-primary);
+.setting-folder-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.progress-count {
-  color: var(--text-secondary);
-}
-
-.progress-bar {
-  height: 8px;
-  background-color: var(--border-color);
+.setting-help {
+  font-size: 13px;
+  color: #4a5568;
+  margin: 4px 0 0 0;
+  padding: 8px 12px;
+  background: #f7fafc;
   border-radius: 4px;
-  overflow: hidden;
+  border-left: 3px solid #4299e1;
 }
 
-.progress-fill {
-  height: 100%;
-  background-color: var(--primary-color);
-  transition: width 0.3s ease;
-}
-
-.progress-percentage {
-  text-align: right;
+.setting-help code {
+  background: #edf2f7;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 600;
+  color: #2d3748;
+}
+
+.settings-loading {
+  text-align: center;
+  padding: 40px;
+  color: #718096;
+}
+
+.settings-error {
+  text-align: center;
+  padding: 40px;
+  color: #e53e3e;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }

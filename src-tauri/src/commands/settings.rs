@@ -1,4 +1,4 @@
-// src/commands/settings.rs
+// src-tauri/src/commands/settings.rs
 use crate::models::settings::AppSettings;
 use crate::services::database::Database;
 use crate::config;
@@ -7,13 +7,77 @@ use tauri::State;
 use crate::AppState;
 
 #[tauri::command]
+pub async fn verify_settings(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    println!("🔍 [DEBUG] verify_settings called");
+
+    let conn = state.db_connection.lock()
+        .map_err(|e| {
+            println!("❌ [DEBUG] Failed to acquire database lock: {}", e);
+            format!("Failed to acquire database lock: {}", e)
+        })?;
+
+    // Check if settings exist
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM settings WHERE key = 'app_settings'",
+        [],
+        |row| row.get(0),
+    ).map_err(|e| format!("Failed to query settings: {}", e))?;
+
+    println!("📋 [DEBUG] Settings count: {}", count);
+
+    if count == 0 {
+        return Ok(json!({
+            "status": "warning",
+            "message": "No settings found in database",
+            "has_settings": false
+        }));
+    }
+
+    // Get the actual settings
+    let settings = Database::get_settings(&conn)?;
+
+    // Get database path
+    let db_path = std::env::current_dir()
+        .map(|p| p.join("review_platform.db").to_string_lossy().to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    Ok(json!({
+        "status": "success",
+        "message": "Settings found in database",
+        "has_settings": true,
+        "settings": settings,
+        "settings_count": count,
+        "db_path": db_path
+    }))
+}
+
+#[tauri::command]
+pub async fn get_app_info() -> Result<serde_json::Value, String> {
+    Ok(json!({
+        "status": "success",
+        "name": config::APP_NAME,
+        "version": config::APP_VERSION,
+        "db_path": config::get_db_path(),
+        "cache_dir": config::get_cache_dir(),
+        "thumbnail_size": config::get_thumbnail_size()
+    }))
+}
+
+#[tauri::command]
 pub async fn get_settings(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
+    println!("🔍 [DEBUG] get_settings called");
     let conn = state.db_connection.lock()
-        .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
+        .map_err(|e| {
+            println!("❌ [DEBUG] Failed to acquire database lock: {}", e);
+            format!("Failed to acquire database lock: {}", e)
+        })?;
 
     let settings = Database::get_settings(&conn)?;
+    println!("✅ [DEBUG] Settings retrieved successfully");
 
     Ok(json!({
         "status": "success",
@@ -24,19 +88,33 @@ pub async fn get_settings(
 #[tauri::command]
 pub async fn update_settings(
     settings: serde_json::Value,
-    state: State<'_, AppState>,  // Use AppState consistently
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let new_settings: AppSettings = serde_json::from_value(settings)
-        .map_err(|e| format!("Invalid settings payload: {}", e))?;
+    println!("💾 [DEBUG] update_settings called");
+    println!("📥 [DEBUG] Received settings payload: {}", settings);
+
+    let new_settings: AppSettings = serde_json::from_value(settings.clone())
+        .map_err(|e| {
+            println!("❌ [DEBUG] Failed to parse settings: {}", e);
+            format!("Invalid settings payload: {}", e)
+        })?;
+
+    println!("✅ [DEBUG] Settings parsed successfully");
 
     validate_settings(&new_settings)?;
+    println!("✅ [DEBUG] Settings validated");
 
     let conn = state.db_connection.lock()
-        .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
+        .map_err(|e| {
+            println!("❌ [DEBUG] Failed to acquire database lock: {}", e);
+            format!("Failed to acquire database lock: {}", e)
+        })?;
 
     Database::update_settings(&conn, &new_settings)?;
+    println!("✅ [DEBUG] Settings saved to database");
 
     apply_runtime_settings(&new_settings)?;
+    println!("✅ [DEBUG] Runtime settings applied");
 
     Ok(json!({
         "status": "success",
@@ -47,7 +125,7 @@ pub async fn update_settings(
 
 #[tauri::command]
 pub async fn reset_settings(
-    state: State<'_, AppState>,  // Use AppState
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let default_settings = AppSettings::default();
     let conn = state.db_connection.lock()
@@ -65,7 +143,7 @@ pub async fn reset_settings(
 #[tauri::command]
 pub async fn get_setting(
     key: String,
-    state: State<'_, AppState>,  // Use AppState
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
@@ -83,30 +161,31 @@ pub async fn get_setting(
 pub async fn update_setting(
     key: String,
     value: serde_json::Value,
-    state: State<'_, AppState>,  // Use AppState
+    state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.db_connection.lock()
         .map_err(|e| format!("Failed to acquire database lock: {}", e))?;
 
     let mut settings = Database::get_settings(&conn)?;
 
-    let mut thumbnail_size: Option<u32> = None;  // Store for later use
+    let mut thumbnail_size: Option<u32> = None;
 
     match key.as_str() {
         "default_strategy" => {
             let strategy = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Invalid strategy value: {}", e))?;
-            settings.image_discovery.default_strategy = strategy;
+            settings.discovery.default_strategy = strategy;  // Fixed: discovery
         }
         "base_path" => {
             let path = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Invalid base path: {}", e))?;
-            settings.image_discovery.base_path = path;
+            settings.discovery.base_path = path;  // Fixed: discovery
         }
         "theme" => {
-            let theme = serde_json::from_value(value.clone())
-                .map_err(|e| format!("Invalid theme: {}", e))?;
-            settings.ui.theme = theme;
+            // Theme is not in the current AppSettings structure
+            // You might want to add it to performance or create a new section
+            println!("⚠️ Theme setting not implemented in AppSettings");
+            return Err("Theme setting not supported".to_string());
         }
         "thumbnail_size" => {
             let size: u32 = serde_json::from_value(value.clone())
@@ -114,18 +193,18 @@ pub async fn update_setting(
             if size < 50 || size > 500 {
                 return Err("Thumbnail size must be between 50 and 500".to_string());
             }
-            settings.ui.thumbnail_size = size;
-            thumbnail_size = Some(size);  // Store for later
+            settings.performance.thumbnail_size = size;  // Fixed: performance
+            thumbnail_size = Some(size);
         }
         "grid_columns" => {
             let columns = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Invalid grid columns: {}", e))?;
-            settings.ui.grid_columns = columns;
+            settings.performance.grid_columns = columns;  // Fixed: performance
         }
         "cache_size_mb" => {
             let size = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Invalid cache size: {}", e))?;
-            settings.storage.cache_size_mb = size;
+            settings.storage.cache_size_mb = size;  // Fixed: storage
         }
         "compression_quality" => {
             let quality: u8 = serde_json::from_value(value.clone())
@@ -133,12 +212,12 @@ pub async fn update_setting(
             if quality < 1 || quality > 100 {
                 return Err("Compression quality must be between 1 and 100".to_string());
             }
-            settings.storage.compression_quality = quality;
+            settings.storage.compression_quality = quality;  // Fixed: storage
         }
         "images_path" => {
             let path = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Invalid images path: {}", e))?;
-            settings.storage.images_path = path;
+            settings.storage.images_path = path;  // Fixed: storage
         }
         "auto_cleanup_days" => {
             let days = serde_json::from_value(value.clone())
@@ -146,7 +225,7 @@ pub async fn update_setting(
             if days < 1 || days > 365 {
                 return Err("Auto cleanup days must be between 1 and 365".to_string());
             }
-            settings.storage.auto_cleanup_days = days;
+            settings.storage.auto_cleanup_days = days;  // Fixed: storage
         }
         _ => {
             return Err(format!("Unknown setting key: {}", key));
@@ -156,7 +235,6 @@ pub async fn update_setting(
     validate_settings(&settings)?;
     Database::update_settings(&conn, &settings)?;
 
-    // Apply thumbnail size if it was updated
     if let Some(size) = thumbnail_size {
         config::set_thumbnail_size(size);
     }
@@ -172,12 +250,12 @@ pub async fn update_setting(
 /// Validate settings values
 fn validate_settings(settings: &AppSettings) -> Result<(), String> {
     // Validate thumbnail size
-    if settings.ui.thumbnail_size < 50 || settings.ui.thumbnail_size > 500 {
+    if settings.performance.thumbnail_size < 50 || settings.performance.thumbnail_size > 500 {
         return Err("Thumbnail size must be between 50 and 500".to_string());
     }
 
     // Validate grid columns
-    if settings.ui.grid_columns < 1 || settings.ui.grid_columns > 10 {
+    if settings.performance.grid_columns < 1 || settings.performance.grid_columns > 10 {
         return Err("Grid columns must be between 1 and 10".to_string());
     }
 
@@ -197,7 +275,7 @@ fn validate_settings(settings: &AppSettings) -> Result<(), String> {
     }
 
     // Validate max candidates
-    if settings.image_discovery.max_candidates < 1 || settings.image_discovery.max_candidates > 100 {
+    if settings.discovery.max_candidates < 1 || settings.discovery.max_candidates > 100 {
         return Err("Max candidates must be between 1 and 100".to_string());
     }
 
@@ -206,22 +284,10 @@ fn validate_settings(settings: &AppSettings) -> Result<(), String> {
         return Err("Max uploads per product must be between 1 and 20".to_string());
     }
 
-    // Validate language
-    let valid_languages = ["en", "es", "fr", "de", "zh"];
-    if !valid_languages.contains(&settings.ui.language.as_str()) {
-        return Err(format!("Unsupported language: {}", settings.ui.language));
-    }
-
-    // Validate theme
-    let valid_themes = ["light", "dark", "system"];
-    if !valid_themes.contains(&settings.ui.theme.as_str()) {
-        return Err(format!("Unsupported theme: {}", settings.ui.theme));
-    }
-
     // Validate discovery strategy
     let valid_strategies = ["folder", "filename", "csv", "metadata", "manual"];
-    if !valid_strategies.contains(&settings.image_discovery.default_strategy.as_str()) {
-        return Err(format!("Unsupported discovery strategy: {}", settings.image_discovery.default_strategy));
+    if !valid_strategies.contains(&settings.discovery.default_strategy.as_str()) {
+        return Err(format!("Unsupported discovery strategy: {}", settings.discovery.default_strategy));
     }
 
     Ok(())
@@ -229,7 +295,9 @@ fn validate_settings(settings: &AppSettings) -> Result<(), String> {
 
 /// Apply settings that affect runtime behavior
 fn apply_runtime_settings(settings: &AppSettings) -> Result<(), String> {
-    config::set_thumbnail_size(settings.ui.thumbnail_size);
+    config::set_thumbnail_size(settings.performance.thumbnail_size);
     config::set_cache_dir(settings.storage.images_path.clone());
     Ok(())
 }
+
+

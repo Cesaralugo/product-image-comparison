@@ -1,0 +1,73 @@
+/* src/components/Debug/DebugPanel.css */
+.debug-panel {
+  padding: 20px;
+  background: #f7fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin: 20px;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.debug-actions button {
+  padding: 8px 16px;
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.debug-actions button:hover:not(:disabled) {
+  background: #3182ce;
+}
+
+.debug-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.debug-loading {
+  color: #718096;
+  padding: 8px;
+}
+
+.debug-error {
+  color: #e53e3e;
+  padding: 8px;
+  background: #fff5f5;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.debug-output {
+  background: #1a202c;
+  color: #a0aec0;
+  padding: 16px;
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 400px;
+  margin: 12px 0;
+}
+
+.debug-output pre {
+  margin: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.debug-hint {
+  margin-top: 12px;
+  padding: 8px;
+  background: #ebf8ff;
+  border-radius: 4px;
+  color: #2b6cb0;
+  font-size: 14px;
+}

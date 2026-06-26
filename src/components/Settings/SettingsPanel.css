@@ -34,3 +34,67 @@
   overflow-y: auto;
   padding: calc(var(--spacing-unit) * 2);
 }
+
+.settings-error,
+.settings-empty {
+  text-align: center;
+  padding: 60px 20px;
+  background: #fff5f5;
+  border-radius: 8px;
+  border: 1px solid #fc8181;
+}
+
+.settings-error button,
+.settings-empty button {
+  margin-top: 16px;
+  padding: 8px 20px;
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.settings-error button:hover,
+.settings-empty button:hover {
+  background: #3182ce;
+}
+
+.settings-loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #718096;
+}
+
+.settings-success {
+  color: #38a169;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+}
+
+.settings-error-text {
+  color: #e53e3e;
+  font-weight: 500;
+}
+
+.btn-save-settings {
+  padding: 8px 20px;
+  background: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save-settings:hover:not(:disabled) {
+  background: #3182ce;
+  transform: translateY(-1px);
+}
+
+.btn-save-settings:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -334,3 +334,265 @@
     justify-content: center;
   }
 }
+
+.csv-preview {
+  background: #f7fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.csv-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #edf2f7;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 500;
+}
+
+.csv-preview-title {
+  color: #2d3748;
+}
+
+.csv-preview-count {
+  color: #718096;
+  font-size: 13px;
+}
+
+.csv-preview-table-wrapper {
+  overflow-x: auto;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.csv-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.csv-preview-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.csv-preview-table th {
+  background: #edf2f7;
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #4a5568;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.csv-preview-table td {
+  padding: 6px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #2d3748;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-preview-table tr:hover td {
+  background: #edf2f7;
+}
+
+.csv-description {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-notes {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #718096;
+  font-style: italic;
+}
+
+.csv-preview-footer {
+  padding: 8px 16px;
+  background: #f7fafc;
+  border-top: 1px solid #e2e8f0;
+  color: #718096;
+  font-size: 12px;
+  text-align: right;
+}
+
+.decision-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.decision-badge.approved {
+  background: #48bb78;
+  color: white;
+}
+
+.decision-badge.rejected {
+  background: #fc8181;
+  color: white;
+}
+
+.decision-badge.pending {
+  background: #ed8936;
+  color: white;
+}
+
+/* PDF Preview */
+.pdf-preview {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.pdf-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #2d3748;
+  color: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pdf-preview-title {
+  font-weight: 500;
+}
+
+.pdf-preview-count {
+  color: #a0aec0;
+  font-size: 13px;
+}
+
+.pdf-preview-content {
+  padding: 16px;
+}
+
+.pdf-preview-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f7fafc;
+  border-radius: 6px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-label {
+  font-size: 11px;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 16px;
+}
+
+.pdf-preview-reviews h4 {
+  margin: 0 0 8px 0;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+.pdf-review-item {
+  padding: 8px 12px;
+  background: #f7fafc;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  border-left: 3px solid #4299e1;
+}
+
+.pdf-review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.pdf-review-ref {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+.pdf-review-details {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #718096;
+}
+
+.pdf-review-notes {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #4a5568;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 4px;
+}
+
+.pdf-review-more {
+  text-align: center;
+  color: #718096;
+  font-size: 13px;
+  padding: 8px;
+}
+
+.preview-empty {
+  text-align: center;
+  padding: 30px 20px;
+  color: #718096;
+}
+
+.preview-hint {
+  font-size: 13px;
+  color: #a0aec0;
+  margin-top: 4px;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 30px 20px;
+  color: #718096;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .csv-preview-table {
+    font-size: 11px;
+  }
+
+  .csv-preview-table th,
+  .csv-preview-table td {
+    padding: 4px 8px;
+  }
+
+  .pdf-preview-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

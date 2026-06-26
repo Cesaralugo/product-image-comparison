@@ -1,11 +1,11 @@
 // src/components/Settings/StorageSettings.tsx
 import React, { useState } from 'react'
-import type { StorageSettings as StorSettings } from '@/types/settings'
+import type { StorageSettings } from '@/types/settings'
 
 interface StorageSettingsProps {
-  settings?: StorSettings
-  onUpdate?: (settings: StorSettings) => void
-  onSave?: (settings: StorSettings) => void
+  settings?: StorageSettings
+  onUpdate?: (settings: StorageSettings) => void
+  onSave?: (settings: StorageSettings) => void
 }
 
 const StorageSettings: React.FC<StorageSettingsProps> = ({
@@ -13,18 +13,18 @@ const StorageSettings: React.FC<StorageSettingsProps> = ({
   onUpdate,
   settings
 }) => {
-  // Initialize state directly from props - no useEffect needed
-  const [storageLocation, setStorageLocation] = useState(settings?.imagesPath || '')
-  const [backupFrequency, setBackupFrequency] = useState(settings?.autoCleanupDays || 7)
-  const [compressionQuality, setCompressionQuality] = useState(settings?.compressionQuality || 80)
+  // Use snake_case property names
+  const [storageLocation, setStorageLocation] = useState(settings?.images_path || '')
+  const [backupFrequency, setBackupFrequency] = useState(settings?.auto_cleanup_days || 7)
+  const [compressionQuality, setCompressionQuality] = useState(settings?.compression_quality || 80)
 
   const handleUpdate = () => {
     if (onUpdate) {
       onUpdate({
-        imagesPath: storageLocation,
-        autoCleanupDays: backupFrequency,
-        cacheSizeMb: settings?.cacheSizeMb || 500,
-        compressionQuality: compressionQuality
+        images_path: storageLocation,
+        auto_cleanup_days: backupFrequency,
+        cache_size_mb: settings?.cache_size_mb || 500,
+        compression_quality: compressionQuality
       })
     }
   }
@@ -32,10 +32,10 @@ const StorageSettings: React.FC<StorageSettingsProps> = ({
   const handleSave = () => {
     if (onSave) {
       onSave({
-        imagesPath: storageLocation,
-        cacheSizeMb: settings?.cacheSizeMb || 500,
-        autoCleanupDays: backupFrequency,
-        compressionQuality: compressionQuality
+        images_path: storageLocation,
+        cache_size_mb: settings?.cache_size_mb || 500,
+        auto_cleanup_days: backupFrequency,
+        compression_quality: compressionQuality
       })
     }
   }

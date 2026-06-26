@@ -1,21 +1,17 @@
+// src/types/review.ts
 export interface ReviewResult {
   id: string
-  productReference: string
-  candidatesPresented: string[]
-  selectedImages: string[]
-  uploadedReplacements: UploadedImage[]
-  reviewerNotes: string
-  decisionTimestamp: string
-  timeToDecide: number
-}
-
-export interface UploadedImage {
-  id: string
-  filename: string
-  path: string
-  uploadedAt: string
-  size: number
-  originalPath?: string
+  session_id: string
+  product_reference: string
+  product_description?: string
+  product_metadata?: Record<string, unknown>
+  candidates_presented: string[]
+  selected_images: string[]
+  uploaded_replacements: string[]
+  reviewer_notes: string
+  decision_timestamp: string
+  time_to_decide: number
+  status?: string
 }
 
 export interface ReviewSession {
@@ -24,14 +20,7 @@ export interface ReviewSession {
   lastUpdated: string
   productCount: number
   reviewedCount: number
-  reviews: ReviewResult[]
-  status: 'in-progress' | 'completed' | 'paused'
-}
-
-export interface ReviewStats {
-  totalProducts: number
-  reviewedProducts: number
-  pendingProducts: number
-  averageTimePerProduct: number
-  totalReviewTime: number
+  status: 'active' | 'paused' | 'completed' | 'in-progress'
+  productReferences?: string[]
+  reviews?: ReviewResult[]
 }

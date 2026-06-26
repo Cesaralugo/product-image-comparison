@@ -1,33 +1,31 @@
 // src/types/settings.ts
-// Remove any circular imports - this file should define the types, not import them
-
 export interface DiscoverySettings {
-  defaultStrategy: string
-  basePath: string
-  filenamePattern: string
-  autoDiscoverOnLoad: boolean
-  maxCandidates: number
+  default_strategy: string
+  base_path: string
+  filename_pattern: string
+  auto_discover_on_load: boolean
+  max_candidates: number
 }
 
 export interface PerformanceSettings {
-  thumbnailSize: number
-  gridColumns: number
-  lazyLoadThreshold: number
-  preloadCount: number
+  thumbnail_size: number
+  grid_columns: number
+  lazy_load_threshold: number
+  preload_count: number
 }
 
 export interface StorageSettings {
-  imagesPath: string
-  cacheSizeMb: number
-  autoCleanupDays: number
-  compressionQuality: number
+  images_path: string
+  cache_size_mb: number
+  auto_cleanup_days: number
+  compression_quality: number
 }
 
 export interface ReviewSettings {
-  requireNotes: boolean
-  allowMultipleSelection: boolean
-  maxUploadsPerProduct: number
-  autoSaveProgress: boolean
+  require_notes: boolean
+  allow_multiple_selection: boolean
+  max_uploads_per_product: number
+  auto_save_progress: boolean
 }
 
 export interface AppSettings {

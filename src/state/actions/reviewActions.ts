@@ -21,7 +21,7 @@ export const reviewActions = {
     const state = useAppStore.getState()
     // Use correct property name: productReference (not product_reference)
     return state.reviews.find(
-      (r) => r.productReference === productReference
+      (r) => r.product_reference === productReference
     ) || null
   },
 }
