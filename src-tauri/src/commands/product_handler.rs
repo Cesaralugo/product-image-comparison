@@ -1,7 +1,6 @@
 // src-tauri/src/commands/product_handler.rs
 use crate::services::database::Database;
 use crate::AppState;
-use serde_json::json;
 use tauri::State;
 
 #[tauri::command]

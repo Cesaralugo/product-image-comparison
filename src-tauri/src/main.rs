@@ -38,7 +38,19 @@ use commands::{
     preview_report,
     calculate_layout,
     get_page_items,
-    get_products_by_reference,  // ✅ Add this
+    get_products_by_reference,
+    // ✅ Add new catalog commands
+    discover_and_catalog_images,
+    get_product_images,
+    link_image_to_product,
+    unlink_image_from_product,
+    get_image_usage,
+    select_image_for_session,
+    deselect_image_for_session,
+    get_session_selected_images,
+    discover_images_from_mappings,
+    import_product_package,
+    export_product_package,
 };
 
 #[derive(Clone)]
@@ -121,7 +133,20 @@ fn main() {
             get_page_items,
 
             // Products
-            get_products_by_reference,  // ✅ Add this
+            get_products_by_reference,
+
+            // ✅ Image Catalog
+            discover_and_catalog_images,
+            get_product_images,
+            link_image_to_product,
+            unlink_image_from_product,
+            get_image_usage,
+            select_image_for_session,
+            deselect_image_for_session,
+            get_session_selected_images,
+            discover_images_from_mappings,
+            import_product_package,
+            export_product_package,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

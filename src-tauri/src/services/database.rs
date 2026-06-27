@@ -77,6 +77,74 @@ impl Database {
         .map_err(|e| format!("Failed to create index: {}", e))?;
         println!("✅ [DEBUG] Created index on session_products");
 
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS image_catalog (
+                id              TEXT PRIMARY KEY,
+                filename        TEXT NOT NULL,
+                path            TEXT NOT NULL,
+                hash            TEXT NOT NULL UNIQUE,
+                file_size       INTEGER,
+                mime_type       TEXT,
+                width           INTEGER,
+                height          INTEGER,
+                created_at      TEXT NOT NULL,
+                uploaded_by     TEXT,
+                tags            TEXT
+            )",
+            [],
+        )
+        .map_err(|e| format!("Failed to create 'image_catalog' table: {}", e))?;
+
+        // Product-Image mapping table (many-to-many)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS product_images (
+                product_reference TEXT NOT NULL,
+                image_id          TEXT NOT NULL,
+                is_primary        BOOLEAN DEFAULT 0,
+                display_order     INTEGER DEFAULT 0,
+                created_at        TEXT NOT NULL,
+                FOREIGN KEY (product_reference) REFERENCES products(reference),
+                FOREIGN KEY (image_id) REFERENCES image_catalog(id),
+                PRIMARY KEY (product_reference, image_id)
+            )",
+            [],
+        )
+        .map_err(|e| format!("Failed to create 'product_images' table: {}", e))?;
+
+        // Session selected images table
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS session_selected_images (
+                session_id        TEXT NOT NULL,
+                product_reference TEXT NOT NULL,
+                image_id          TEXT NOT NULL,
+                selected_at       TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES review_sessions(id),
+                FOREIGN KEY (image_id) REFERENCES image_catalog(id),
+                PRIMARY KEY (session_id, product_reference, image_id)
+            )",
+            [],
+        )
+        .map_err(|e| format!("Failed to create 'session_selected_images' table: {}", e))?;
+
+        // Create indexes
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_reference)",
+            [],
+        )
+        .map_err(|e| format!("Failed to create index: {}", e))?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_product_images_image ON product_images(image_id)",
+            [],
+        )
+        .map_err(|e| format!("Failed to create index: {}", e))?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_session_images_session ON session_selected_images(session_id)",
+            [],
+        )
+        .map_err(|e| format!("Failed to create index: {}", e))?;
+
         // Create review_results table with corrected schema
         conn.execute(
             "CREATE TABLE IF NOT EXISTS review_results (
@@ -492,6 +560,7 @@ impl Database {
     }
 
     /// Add products to a session
+    #[allow(dead_code)]
     pub fn add_products_to_session(
         conn: &Connection,
         session_id: &str,

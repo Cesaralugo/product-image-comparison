@@ -298,7 +298,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                                     </div>
                                   );
                                 }
-                              } catch (_e) {
+                              } catch {
                                 return <span className="metadata-raw">{productDetails.metadata}</span>;
                               }
                               return <span className="metadata-raw">{productDetails.metadata}</span>;

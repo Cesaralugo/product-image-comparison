@@ -5,6 +5,8 @@ import { ImageSelector } from '@/components/Gallery'
 import { FolderSelector } from '@/components/Common'
 import Button from '@/components/Common/Button'
 import SessionProgress from './SessionProgress'
+import ZipImport  from '@/components/Common/ZipImport'
+import { useExport } from '@/hooks/useExport'
 import { useFileSystem } from '@/hooks/useFileSystem'
 import { useAppStore } from '@/state/store'
 import { createReviewSession, getAllSessions, getProductsByReference } from '@/services/api'
@@ -31,6 +33,7 @@ const SessionManager: React.FC<SessionManagerProps> = ({
   const [sessionProducts, setSessionProducts] = useState<Record<string, Product[]>>({})
   const { navigateTo, deleteSession, loadProducts } = useAppStore()
   const { pickSaveFile, writeFile } = useFileSystem()
+  const { exportPackage } = useExport()
 
   // Load all sessions on mount
   useEffect(() => {
@@ -242,6 +245,42 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     }
   }
 
+  const handleExportPackage = async () => {
+    const session = sessions.find(s => s.id === selectedSessionId)
+    if (!session) {
+      setNotification({ type: 'error', message: '❌ No session selected to export' })
+      return
+    }
+
+    const products = sessionProducts[session.id]
+    if (!products || products.length === 0) {
+      setNotification({ type: 'error', message: '❌ No products to export in this session' })
+      return
+    }
+
+    try {
+      const result = await exportPackage({
+        sessionId: session.id,
+        products: products,  // Pass products from sessionProducts state
+        includeImages: true,
+        includeMetadata: true
+      })
+
+      if (result) {
+        setNotification({
+          type: 'success',
+          message: `✅ Package exported successfully! Size: ${result.size.toFixed(2)} MB`
+        })
+      }
+    } catch (err) {
+      console.error('Export failed:', err)
+      setNotification({
+        type: 'error',
+        message: err instanceof Error ? err.message : '❌ Failed to export package'
+      })
+    }
+  }
+
   const handleCreateNewSession = async () => {
     try {
       const newSession = await createReviewSession(0)
@@ -359,6 +398,16 @@ const SessionManager: React.FC<SessionManagerProps> = ({
     }
   }
 
+  const refreshSessions = async () => {
+    try {
+      const result = await getAllSessions()
+      setSessions(result)
+    } catch (err) {
+      console.error('Failed to refresh sessions:', err)
+      setNotification({ type: 'error', message: 'Failed to refresh sessions' })
+    }
+  }
+
   const getProductDetails = (session: ReviewSession) => {
     console.log('🔍 Getting product details for session:', session.id)
     console.log('📦 Session product references:', session.productReferences)
@@ -399,6 +448,47 @@ const SessionManager: React.FC<SessionManagerProps> = ({
       )}
 
       <div className="session-grid">
+          <ZipImport
+            onImportComplete={(result: {
+              status: string
+              message: string
+              summary: {
+                products_imported: number
+                images_cataloged: number
+                mappings_applied: number
+                warnings: string[]
+                image_errors: string[]
+                mapping_errors: string[]
+                temp_path: string
+              }
+            }) => {
+              console.log('Import complete:', result)
+              setNotification({
+                type: 'success',
+                message: `✅ Imported ${result.summary.products_imported} products, ${result.summary.images_cataloged} images, ${result.summary.mappings_applied} mappings`
+              })
+              // ✅ Fix: Use refreshSessions instead of loadAllSessions
+              refreshSessions()
+            }}
+            onError={(error: string) => {
+              setNotification({ type: 'error', message: `❌ ${error}` })
+            }}
+          />
+
+        <div className="session-card">
+          <h3>📦 Export Product Package</h3>
+          <p className="card-description">
+            Export product data, images, and mappings to a ZIP package
+          </p>
+          <Button
+            onClick={handleExportPackage}
+            variant="primary"
+            disabled={!selectedSessionId}
+          >
+            📦 Export Package
+          </Button>
+        </div>
+
         <div className="session-card">
           <h3>📥 Import Products</h3>
           <p className="card-description">

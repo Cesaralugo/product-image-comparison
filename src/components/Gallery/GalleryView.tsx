@@ -2,7 +2,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { imageService } from '@/services/imageService'
 import { settingsService } from '@/services/settingsService'
+import { invoke } from '@tauri-apps/api/core'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import './GalleryView.css'
+
+interface MappingImage {
+  id: string
+  filename: string
+  path: string
+  is_shared: boolean
+  used_by: string[]
+}
+
+interface MappingProduct {
+  product_reference: string
+  images: MappingImage[]
+  count: number
+}
+
+interface MappingResult {
+  status: string
+  products: MappingProduct[]
+  total_products: number
+  total_images: number
+  message: string
+}
 
 interface GalleryViewProps {
   productReference?: string
@@ -20,6 +44,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [basePath, setBasePath] = useState<string>('')
+  const [mappingsPath, setMappingsPath] = useState<string>('')
   const [isUploading, setIsUploading] = useState(false)
   const [notification, setNotification] = useState<string | null>(null)
 
@@ -35,6 +60,39 @@ const GalleryView: React.FC<GalleryViewProps> = ({
     }
   }, [])
 
+  // Load settings to get base path and mappings path
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await settingsService.getSettings()
+        if (settings?.discovery?.base_path) {
+          setBasePath(settings.discovery.base_path)
+          console.log('📁 Loaded base path from settings:', settings.discovery.base_path)
+
+          const mappingsPath = `${settings.discovery.base_path}/image_mappings.csv`
+          setMappingsPath(mappingsPath)
+          console.log('📁 Mappings path:', mappingsPath)
+        } else {
+          console.warn('⚠️ No base path found in settings. Please set it in Settings → Discovery.')
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      }
+    }
+    loadSettings()
+  }, [])
+
+  // ✅ Helper to get a displayable URL for an image
+  const getImageUrl = (path: string): string => {
+    // If it's already a full path, use convertFileSrc
+    if (path.startsWith('/') || path.includes(':')) {
+      return convertFileSrc(path)
+    }
+    // Otherwise, construct the full path from base path
+    return convertFileSrc(`${basePath}/${path}`)
+  }
+
+  // Load images using the new mapping system
   const loadImagesForProduct = useCallback(async (ref: string) => {
     if (!isMounted.current || !ref) {
       console.log('⚠️ Gallery: Cannot load images - no ref or unmounted')
@@ -47,44 +105,112 @@ const GalleryView: React.FC<GalleryViewProps> = ({
     hasLoaded.current = true
 
     try {
-      console.log(`🔍 Discovering images for: ${ref} with base path: ${basePath || 'default'}`)
-
-      let result = await imageService.discoverImages(ref, 'folder', basePath || undefined)
-
-      if (result.length === 0) {
-        console.log('🔄 Trying filename pattern strategy...')
-        result = await imageService.discoverImages(ref, 'filename', basePath || undefined, `${ref}_*.jpg`)
+      if (!basePath) {
+        throw new Error('Image base path not configured')
       }
 
-      if (result.length === 0) {
-        console.log('🔄 Trying CSV column strategy...')
-        result = await imageService.discoverImages(ref, 'csv', basePath || undefined)
-      }
+      // First, try the new mapping system
+      try {
+        console.log('📋 Using mapping system for discovery...')
+        const mappingResult = await invoke<MappingResult>('discover_images_from_mappings', {
+          basePath: basePath,
+          mappingsPath: mappingsPath || `${basePath}/image_mappings.csv`
+        })
+        console.log('📊 Mapping discovery result:', mappingResult)
 
-      console.log(`✅ Found ${result.length} images for ${ref}`)
+        const products = mappingResult.products || []
+        const productData = products.find((p: MappingProduct) => p.product_reference === ref)
 
-      if (isMounted.current) {
-        const imagePaths = result.map(img => img.path)
-        setImages(imagePaths)
-        setLoading(false)
+        if (productData && productData.images && productData.images.length > 0) {
+          // ✅ Store the relative paths (just the filename)
+          const imagePaths = productData.images.map((img: MappingImage) => img.path)
+          console.log(`✅ Found ${imagePaths.length} images via mappings for ${ref}`)
 
-        if (onImagesLoaded) {
-          onImagesLoaded(imagePaths)
+          if (isMounted.current) {
+            setImages(imagePaths)
+            if (onImagesLoaded) {
+              onImagesLoaded(imagePaths)
+            }
+            setLoading(false)
+            return
+          }
         }
 
-        if (imagePaths.length === 0 && isMounted.current) {
-          setError(`No images found for "${ref}"`)
+        // If no images found via mappings, try the folder strategy
+        console.log('🔄 No images found via mappings, trying folder strategy...')
+        const folderResult = await imageService.discoverImages(ref, 'folder', basePath || undefined)
+
+        if (folderResult.length === 0) {
+          console.log('🔄 Trying filename pattern strategy...')
+          const filenameResult = await imageService.discoverImages(ref, 'filename', basePath || undefined, `${ref}_*.jpg`)
+
+          if (filenameResult.length === 0) {
+            console.log('🔄 Trying CSV column strategy...')
+            const csvResult = await imageService.discoverImages(ref, 'csv', basePath || undefined)
+
+            console.log(`✅ Found ${csvResult.length} images via CSV strategy for ${ref}`)
+            if (isMounted.current) {
+              const imagePaths = csvResult.map(img => img.path)
+              setImages(imagePaths)
+              if (onImagesLoaded) {
+                onImagesLoaded(imagePaths)
+              }
+              if (imagePaths.length === 0 && isMounted.current) {
+                setError(`No images found for "${ref}"`)
+              }
+            }
+          } else {
+            console.log(`✅ Found ${filenameResult.length} images via filename pattern for ${ref}`)
+            if (isMounted.current) {
+              const imagePaths = filenameResult.map(img => img.path)
+              setImages(imagePaths)
+              if (onImagesLoaded) {
+                onImagesLoaded(imagePaths)
+              }
+              if (imagePaths.length === 0 && isMounted.current) {
+                setError(`No images found for "${ref}"`)
+              }
+            }
+          }
+        } else {
+          console.log(`✅ Found ${folderResult.length} images via folder strategy for ${ref}`)
+          if (isMounted.current) {
+            const imagePaths = folderResult.map(img => img.path)
+            setImages(imagePaths)
+            if (onImagesLoaded) {
+              onImagesLoaded(imagePaths)
+            }
+            if (imagePaths.length === 0 && isMounted.current) {
+              setError(`No images found for "${ref}"`)
+            }
+          }
+        }
+      } catch (mappingError) {
+        console.warn('⚠️ Mapping system failed, falling back to folder strategy:', mappingError)
+        const fallbackResult = await imageService.discoverImages(ref, 'folder', basePath || undefined)
+        if (isMounted.current) {
+          const imagePaths = fallbackResult.map(img => img.path)
+          setImages(imagePaths)
+          if (onImagesLoaded) {
+            onImagesLoaded(imagePaths)
+          }
+          if (imagePaths.length === 0 && isMounted.current) {
+            setError(`No images found for "${ref}"`)
+          }
         }
       }
     } catch (err) {
       if (isMounted.current) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load images'
         setError(errorMsg)
-        setLoading(false)
         console.error('Error loading images:', err)
       }
+    } finally {
+      if (isMounted.current) {
+        setLoading(false)
+      }
     }
-  }, [basePath, onImagesLoaded])
+  }, [basePath, mappingsPath, onImagesLoaded])
 
   // Reset when productReference changes
   useEffect(() => {
@@ -116,24 +242,6 @@ const GalleryView: React.FC<GalleryViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productReference])
 
-  // Load settings to get base path
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const settings = await settingsService.getSettings()
-        if (settings?.discovery?.base_path) {
-          setBasePath(settings.discovery.base_path)
-          console.log('📁 Loaded base path from settings:', settings.discovery.base_path)
-        } else {
-          console.warn('⚠️ No base path found in settings. Please set it in Settings → Discovery.')
-        }
-      } catch (err) {
-        console.error('Failed to load settings:', err)
-      }
-    }
-    loadSettings()
-  }, [])
-
   // Load images when basePath loads and we have a product reference
   useEffect(() => {
     if (productReference && basePath && !hasLoaded.current && !loading) {
@@ -146,7 +254,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({
   const handleImageClick = (path: string) => {
     console.log('🖼️ Image clicked for preview:', path)
     setSelectedImage(prev => prev === path ? null : path)
-    // ✅ Remove the onImageSelect call here
+    // ❌ Remove onImageSelect call - this was adding to review
   }
 
   const handleUploadClick = () => {
@@ -185,7 +293,6 @@ const GalleryView: React.FC<GalleryViewProps> = ({
 
       console.log('✅ Upload successful:', result)
 
-      // Refresh images after upload
       hasLoaded.current = false
       await loadImagesForProduct(productReference)
 
@@ -306,59 +413,63 @@ const GalleryView: React.FC<GalleryViewProps> = ({
       ) : (
         <>
           <div className="gallery-grid">
-            {images.map((path, index) => (
-              <div
-                key={index}
-                className={`gallery-item ${selectedImage === path ? 'previewing' : ''}`}
-                onClick={() => handleImageClick(path)}
-              >
-                <img
-                  src={imageService.getImageUrl(path)}
-                  alt={`Product image ${index + 1}`}
-                  loading="lazy"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
-                  }}
-                />
-                <div className="gallery-item-overlay">
-                  <span className="gallery-item-index">{index + 1}</span>
-                  {/* ✅ Add button - this adds to review selection */}
-                  <button
-                    className="gallery-item-select"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (onImageSelect) {
-                        onImageSelect(path)
-                      }
+            {images.map((path, index) => {
+              // ✅ Use the helper to get the display URL
+              const displayUrl = getImageUrl(path)
+              return (
+                <div
+                  key={index}
+                  className={`gallery-item ${selectedImage === path ? 'previewing' : ''}`}
+                  onClick={() => handleImageClick(path)}
+                >
+                  <img
+                    src={displayUrl}
+                    alt={`Product image ${index + 1}`}
+                    loading="lazy"
+                    onError={(e) => {
+                      console.warn(`⚠️ Failed to load image: ${displayUrl}`)
+                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
                     }}
-                    title="Add to review selection"
-                  >
-                    ➕
-                  </button>
-                  <button
-                    className="gallery-item-delete"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteImage(path)
-                    }}
-                  >
-                    ×
-                  </button>
+                  />
+                  <div className="gallery-item-overlay">
+                    <span className="gallery-item-index">{index + 1}</span>
+                    <button
+                      className="gallery-item-select"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // ✅ This is the only way to add to review
+                        if (onImageSelect) {
+                          onImageSelect(path)
+                        }
+                      }}
+                      title="Add to review selection"
+                    >
+                      ➕
+                    </button>
+                    <button
+                      className="gallery-item-delete"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteImage(path)
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          {/* Image Preview Panel */}
           {selectedImage && (
             <div className="gallery-preview">
               <h4>Image Preview</h4>
               <div className="gallery-preview-container">
                 <img
-                  src={imageService.getImageUrl(selectedImage)}
+                  src={getImageUrl(selectedImage)}
                   alt="Preview"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
+                    e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-family="sans-serif" font-size="14"%3ENo Image%3C/text%3E%3C/svg%3E'
                   }}
                 />
               </div>

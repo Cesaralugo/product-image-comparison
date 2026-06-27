@@ -292,6 +292,12 @@ impl ImageDiscovery {
 
         let aspect_ratio = width as f64 / height as f64;
 
+        // Get format from extension
+        let format = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|s| s.to_lowercase());
+
         let id = Uuid::new_v4().to_string();
 
         Ok(Some(ImageCandidate {
@@ -302,6 +308,8 @@ impl ImageDiscovery {
             size,
             width,
             height,
+            format,  // ✅ Add format field
+            thumbnail_path: None,  // ✅ Add thumbnail_path field
         }))
     }
 

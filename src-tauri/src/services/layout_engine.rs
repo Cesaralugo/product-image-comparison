@@ -138,6 +138,7 @@ impl LayoutEngine {
     }
 
     /// Get the next page of items for paginated layout
+    #[allow(dead_code)]
     pub fn get_page_items<T: Clone>(
         items: &[T],
         current_page: usize,
@@ -154,6 +155,7 @@ impl LayoutEngine {
     }
 
     /// Get pagination info
+    #[allow(dead_code)]
     pub fn get_pagination_info(total_items: usize, items_per_page: usize) -> (usize, usize) {
         let total_pages = (total_items as f32 / items_per_page as f32).ceil() as usize;
         (0, total_pages)
@@ -167,6 +169,7 @@ impl LayoutEngine {
     }
 
     /// Calculate thumbnail strip dimensions
+    #[allow(dead_code)]
     pub fn calculate_thumbnail_strip(
         image_count: usize,
         container_width: f32,
@@ -189,6 +192,7 @@ impl LayoutEngine {
 }
 
 // Helper for serialization - REMOVED #[cfg(feature = "frontend")]
+#[allow(dead_code)]
 impl LayoutConfig {
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
